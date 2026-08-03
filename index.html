@@ -312,7 +312,8 @@ function saveProgress() {
     date: state.reportDate,
     jqx: state.jqxDone,
     syx: state.syxDone,
-    cities: {}
+    cities: {},
+    vins: [...DELIVERABLE_VINS]
   };
   for (let c in state.cities) data.cities[c] = { l: state.cities[c].l, f: state.cities[c].f };
   localStorage.setItem('xishi_progress', JSON.stringify(data));
@@ -325,6 +326,9 @@ function loadProgress() {
       if (data.date) state.reportDate = data.date;
       if (typeof data.jqx === 'number') state.jqxDone = data.jqx;
       if (typeof data.syx === 'number') state.syxDone = data.syx;
+      if (data.vins && data.vins.length) {
+        DELIVERABLE_VINS.clear(); data.vins.forEach(v=>DELIVERABLE_VINS.add(v));
+      }
       if (data.cities) {
         for (let c in data.cities) {
           if (state.cities[c]) {
