@@ -76,12 +76,16 @@
   .summary-card .sc-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
   .summary-card .sc-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+  .right-col { display: flex; flex-direction: column; gap: 10px; }
+  .right-col .section-box { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .right-col .section-box .sb-hd { flex-shrink: 0; }
+  #alertContent { flex: 1; overflow-y: auto; }
   .section-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
   .section-box .sb-hd { padding: 6px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); background: var(--gray-light); display: flex; align-items: center; gap: 5px; }
   .section-box .sb-hd .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
 
-  #notesArea { width: 100%; min-height: 100px; border: none; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical; outline: none; color: var(--text); background: var(--card-bg); line-height: 1.6; }
+  #notesArea { width: 100%; min-height: 0; flex: 1; border: none; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: none; outline: none; color: var(--text); background: var(--card-bg); line-height: 1.6; }
   #notesArea::placeholder { color: #c0c4cc; }
   #notesArea:focus { background: #fafbfc; }
 
@@ -212,6 +216,7 @@
     <div class="sb-hd"><span class="dot"></span>各车辆所在城市交付进度</div>
     <div id="cityContent"></div>
   </div>
+  <div class="right-col">
   <div class="section-box" id="alertBox">
     <div class="sb-hd"><span class="dot"></span>风险预警 & 待办</div>
     <div id="alertContent"></div>
@@ -219,6 +224,7 @@
   <div class="section-box" id="notesBox">
     <div class="sb-hd"><span class="dot" style="background:#8b5cf6"></span>备注信息</div>
     <textarea id="notesArea" placeholder="在此输入备注信息…"></textarea>
+  </div>
   </div>
 </div>
 
