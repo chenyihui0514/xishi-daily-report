@@ -6,6 +6,7 @@
 <title>西十日报</title>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #f5f6f8; --card-bg: #ffffff; --text: #1a1a2e; --text-secondary: #6b7280;
@@ -273,6 +274,8 @@
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="toggleEditMode()">取消</button>
+      <input type="file" id="progressFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
+      <button class="btn" style="background:#eef2ff;color:#4f46e5" onclick="document.getElementById('progressFileInput').click()">📎 上传底表</button>
       <button class="btn btn-primary" onclick="applyEdits()">✅ 应用更新</button>
     </div>
   </div>
@@ -593,6 +596,55 @@ function exportSnapshot(){
     btn.textContent='📥 导出'; btn.disabled=false;
     alert('导出失败，请重试');
   });
+}
+
+function handleFileUpload(e){
+  const file=e.target.files[0]; if(!file) return;
+  const btn=document.querySelector('#editModal .btn-primary');
+  btn.textContent='⏳ 解析中...'; btn.disabled=true;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try {
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const sh=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sh,{header:1});
+      // rows: [header, ...data]
+      // col 1=VIN, col 3=city, col 7=可交付, col 8=交付进度, col 9=上架进度
+      const vins=new Set();
+      const cities={};
+      for(let c in BASELINE.cities) cities[c]={l:0,f:0};
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i]; if(!r[1]) continue;
+        const vin=String(r[1]||'').trim(), city=String(r[3]||'').trim();
+        if(Number(r[7])>40000) vins.add(vin);
+        if(cities[city]!=null){
+          if(Number(r[8])>40000) cities[city].f++;
+          if(Number(r[9])>40000) cities[city].l++;
+        }
+      }
+      // Update DELIVERABLE_VINS
+      DELIVERABLE_VINS.clear(); vins.forEach(v=>DELIVERABLE_VINS.add(v));
+      // Update state
+      for(let c in cities){
+        if(state.cities[c]){ state.cities[c].l=cities[c].l; state.cities[c].f=cities[c].f; }
+      }
+      saveProgress();
+      renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
+      // Refresh modal inputs
+      const order=['广州','长沙','昆明','成都','郑州','武汉','三亚','佛山'];
+      order.forEach(city=>{
+        const lE=document.getElementById('el_'+city), fE=document.getElementById('ef_'+city);
+        if(lE) lE.value=state.cities[city].l;
+        if(fE) fE.value=state.cities[city].f;
+      });
+      btn.textContent='✅ 应用更新'; btn.disabled=false;
+      e.target.value='';
+    } catch(err){
+      alert('解析失败: '+err.message);
+      btn.textContent='✅ 应用更新'; btn.disabled=false;
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 init();
