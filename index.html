@@ -391,7 +391,7 @@ function renderSummary() {
       <div class="sc-icon">🛡️</div><div class="sc-body"><div class="sc-value" style="color:var(--blue)">${state.overlapDone}<span style="font-size:13px;font-weight:400">/${BASELINE.total}</span></div><div class="sc-label">交商双覆盖 ${oP}% · 交${state.jqxDone} 商${state.syxDone}</div></div>
     </div>
     <div class="summary-card">
-      <div class="sc-icon">📦</div><div class="sc-body"><div class="sc-value" style="color:${f>0?'var(--green)':(d>0?'var(--blue)':'var(--text-secondary)')}">${d}<span style="font-size:13px;font-weight:400;color:var(--text-secondary)"> 可交 / </span>${f}<span style="font-size:13px;font-weight:400;color:var(--text-secondary)"> 已交</span></div><div class="sc-label">可交付 ${pct(d,BASELINE.total)}% · 已交付 ${pct(f,BASELINE.total)}%</div></div>
+      <div class="sc-icon">📦</div><div class="sc-body"><div class="sc-value" style="color:${f>0?'var(--green)':(d>0?'var(--blue)':'var(--text-secondary)')}">${d}/${f}<span style="font-size:13px;font-weight:400;color:var(--text-secondary)"></span></div><div class="sc-label">可交付 ${pct(d,BASELINE.total)}% · 已交付 ${pct(f,BASELINE.total)}%</div></div>
     </div>
     <div class="summary-card">
       <div class="sc-icon">📋</div><div class="sc-body"><div class="sc-value" style="color:${l>0?'var(--blue)':'var(--text-secondary)'}">${l}<span style="font-size:13px;font-weight:400">/${BASELINE.total}</span></div><div class="sc-label">车辆上架 · ${lP}%</div></div>
