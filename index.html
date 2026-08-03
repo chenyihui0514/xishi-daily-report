@@ -339,7 +339,17 @@ async function loadDataFromXlsx(){
   try{
     const resp=await fetch('xishi_data.xlsx');
     if(resp.ok){ const buf=await resp.arrayBuffer(); parseXlsx(buf); }
-  }catch(e){console.warn('xlsx load failed, using localStorage fallback');
+    // 加载通用备注文件
+    try{
+      const nr=await fetch('xishi_notes.txt');
+      if(nr.ok){
+        const ntxt=await nr.text();
+        const ta=document.getElementById('notesArea');
+        if(ta&&ntxt.trim()) ta.value=ntxt.trim()+'\n\n'+ta.value;
+      }
+    }catch(e){}
+  }catch(e){console.warn('xlsx load failed');
+    const raw=localStorage.getItem('xishi_progress');
     const raw=localStorage.getItem('xishi_progress');
     if(raw){const d=JSON.parse(raw);
       if(d.vins)d.vins.forEach(v=>DELIVERABLE_VINS.add(v));
