@@ -557,37 +557,42 @@ function exportSnapshot(){
   const alertContent=document.getElementById('alertContent');
   const notesArea=document.getElementById('notesArea');
 
-  // Save original styles
+  // Replace textarea with div for proper html2canvas rendering
+  const notesText=notesArea.value;
+  const notesDiv=document.createElement('div');
+  notesDiv.id='notesExportDiv';
+  notesDiv.style.cssText='width:100%;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--card-bg);line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;';
+  notesDiv.textContent=notesText;
+  notesArea.style.display='none';
+  notesArea.parentNode.insertBefore(notesDiv, notesArea);
+
   const orig = {
     cW: container.style.width, cMW: container.style.maxWidth,
     tcD: twoCol.style.display, rCD: rightCol?rightCol.style.display:'',
     rCF: rightCol?rightCol.style.flex:'', rCFD: rightCol?rightCol.style.flexDirection:'',
-    aOF: alertBox.style.flex, nOF: notesBox.style.flex, nOH: notesArea.style.height,
+    aOF: alertBox.style.flex, nOF: notesBox.style.flex,
     acO: alertContent.style.overflow, acOY: alertContent.style.overflowY, acH: alertContent.style.maxHeight
   };
 
-  // Export layout: single column, no overflow
   container.style.width='750px'; container.style.maxWidth='none';
   twoCol.style.display='block';
   if(rightCol){ rightCol.style.display='block'; rightCol.style.flex='none'; rightCol.style.flexDirection='column'; }
   cityBox.style.marginBottom='10px';
   alertBox.style.flex='none'; alertBox.style.marginBottom='10px';
   notesBox.style.flex='none';
-  notesArea.style.height=notesArea.scrollHeight+'px'; notesArea.style.overflow='visible';
   alertContent.style.overflow='visible'; alertContent.style.overflowY='visible'; alertContent.style.maxHeight='none';
   detail.style.display='none';
   if(titleEl) titleEl.style.display='none';
 
   html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:750 }).then(canvas => {
-    // Restore
     container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
     twoCol.style.display=orig.tcD;
     if(rightCol){ rightCol.style.display=orig.rCD; rightCol.style.flex=orig.rCF; rightCol.style.flexDirection=orig.rCFD; }
     cityBox.style.marginBottom='';
     alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
     notesBox.style.flex=orig.nOF;
-    notesArea.style.height=orig.nOH;
     alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
+    notesDiv.remove(); notesArea.style.display='';
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
     const link=document.createElement('a');
@@ -601,61 +606,12 @@ function exportSnapshot(){
     cityBox.style.marginBottom='';
     alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
     notesBox.style.flex=orig.nOF;
-    notesArea.style.height=orig.nOH;
     alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
+    notesDiv.remove(); notesArea.style.display='';
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
     alert('导出失败，请重试');
   });
-}
-
-function handleFileUpload(e){
-  const file=e.target.files[0]; if(!file) return;
-  const btn=document.querySelector('#editModal .btn-primary');
-  btn.textContent='⏳ 解析中...'; btn.disabled=true;
-  const reader=new FileReader();
-  reader.onload=function(ev){
-    try {
-      const wb=XLSX.read(ev.target.result,{type:'array'});
-      const sh=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(sh,{header:1});
-      // rows: [header, ...data]
-      // col 1=VIN, col 3=city, col 7=可交付, col 8=交付进度, col 9=上架进度
-      const vins=new Set();
-      const cities={};
-      for(let c in BASELINE.cities) cities[c]={l:0,f:0};
-      for(let i=1;i<rows.length;i++){
-        const r=rows[i]; if(!r[1]) continue;
-        const vin=String(r[1]||'').trim(), city=String(r[3]||'').trim();
-        if(Number(r[7])>40000) vins.add(vin);
-        if(cities[city]!=null){
-          if(Number(r[8])>40000) cities[city].f++;
-          if(Number(r[9])>40000) cities[city].l++;
-        }
-      }
-      // Update DELIVERABLE_VINS
-      DELIVERABLE_VINS.clear(); vins.forEach(v=>DELIVERABLE_VINS.add(v));
-      // Update state
-      for(let c in cities){
-        if(state.cities[c]){ state.cities[c].l=cities[c].l; state.cities[c].f=cities[c].f; }
-      }
-      saveProgress();
-      renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
-      // Refresh modal inputs
-      const order=['广州','长沙','昆明','成都','郑州','武汉','三亚','佛山'];
-      order.forEach(city=>{
-        const lE=document.getElementById('el_'+city), fE=document.getElementById('ef_'+city);
-        if(lE) lE.value=state.cities[city].l;
-        if(fE) fE.value=state.cities[city].f;
-      });
-      btn.textContent='✅ 应用更新'; btn.disabled=false;
-      e.target.value='';
-    } catch(err){
-      alert('解析失败: '+err.message);
-      btn.textContent='✅ 应用更新'; btn.disabled=false;
-    }
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 init();
