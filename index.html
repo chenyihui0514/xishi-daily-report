@@ -54,6 +54,8 @@
   .pipeline-strip .ps-stage.done { background: var(--green-light); }
   .pipeline-strip .ps-stage.active { background: var(--blue-light); }
   .pipeline-strip .ps-stage.risk { background: var(--amber-light); }
+  .pipeline-strip .ps-stage.stage4 { background: #f5f3ff; }
+  .pipeline-strip .ps-stage.stage5 { background: #fff7ed; }
   .ps-stage .ps-num { display: inline-block; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 700; line-height: 18px; margin-bottom: 3px; background: #e5e7eb; color: var(--text-secondary); }
   .ps-stage.done .ps-num { background: var(--green); color: #fff; }
   .ps-stage.active .ps-num { background: var(--blue); color: #fff; }
@@ -78,6 +80,10 @@
   .section-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
   .section-box .sb-hd { padding: 6px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); background: var(--gray-light); display: flex; align-items: center; gap: 5px; }
   .section-box .sb-hd .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+
+  #notesArea { width: 100%; min-height: 100px; border: none; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical; outline: none; color: var(--text); background: var(--card-bg); line-height: 1.6; }
+  #notesArea::placeholder { color: #c0c4cc; }
+  #notesArea:focus { background: #fafbfc; }
 
   .city-table { width: 100%; font-size: 13px; table-layout: fixed; }
   .city-table th { padding: 5px 5px; text-align: center; font-weight: 600; font-size: 10px; color: var(--text-secondary); background: var(--gray-light); border-bottom: 1px solid var(--border); }
@@ -209,6 +215,10 @@
   <div class="section-box" id="alertBox">
     <div class="sb-hd"><span class="dot"></span>风险预警 & 待办</div>
     <div id="alertContent"></div>
+  </div>
+  <div class="section-box" id="notesBox">
+    <div class="sb-hd"><span class="dot" style="background:#8b5cf6"></span>备注信息</div>
+    <textarea id="notesArea" placeholder="在此输入备注信息…"></textarea>
   </div>
 </div>
 
@@ -351,6 +361,12 @@ function pct(a,b) { return b>0 ? Math.round(a/b*100) : 0; }
 function init() {
   document.getElementById('genTime').textContent = new Date().toLocaleString('zh-CN');
   document.getElementById('reportDate').textContent = state.reportDate;
+  // 恢复备注
+  const saved = localStorage.getItem('xishi_note');
+  if (saved) document.getElementById('notesArea').value = saved;
+  document.getElementById('notesArea').addEventListener('input', function() {
+    localStorage.setItem('xishi_note', this.value);
+  });
   renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
   populateFilters(); renderTable();
 }
@@ -378,14 +394,14 @@ function renderSummary() {
 function renderPipeline() {
   const {l,d,f}=getAgg();
   const stages = [
-    {n:1, name:'客户确认', stat:`${BASELINE.total}台`, p:100, cls:'done'},
-    {n:2, name:'车辆投保', stat:`交${state.jqxDone} 商${state.syxDone}`, p:pct(state.jqxDone,BASELINE.jqxTotal), cls:state.jqxDone>=BASELINE.jqxTotal?'done':(state.jqxDone>0?'risk':'pending')},
-    {n:3, name:'可交付车辆数', stat:`${d}/${BASELINE.total}`, p:pct(d,BASELINE.total), cls:d>=BASELINE.total?'done':(d>0?'active':'pending')},
-    {n:4, name:'交付完成', stat:`${f}/${BASELINE.total}`, p:pct(f,BASELINE.total), cls:f>=BASELINE.total?'done':(f>0?'active':'pending')},
-    {n:5, name:'车辆上架', stat:`${l}/${BASELINE.total}`, p:pct(l,BASELINE.total), cls:l>=BASELINE.total?'done':(l>0?'active':'pending')}
+    {n:1, name:'客户确认', stat:`${BASELINE.total}台`, p:100, cls:'done', c:'var(--green)'},
+    {n:2, name:'车辆投保', stat:`交${state.jqxDone} 商${state.syxDone}`, p:pct(state.jqxDone,BASELINE.jqxTotal), cls:state.jqxDone>=BASELINE.jqxTotal?'done':(state.jqxDone>0?'risk':'pending'), c:state.jqxDone>=BASELINE.jqxTotal?'var(--green)':(state.jqxDone>0?'var(--amber)':'#e5e7eb')},
+    {n:3, name:'可交付车辆数', stat:`${d}/${BASELINE.total}`, p:pct(d,BASELINE.total), cls:d>=BASELINE.total?'done':(d>0?'active':'pending'), c:d>=BASELINE.total?'var(--green)':(d>0?'var(--blue)':'#e5e7eb')},
+    {n:4, name:'交付完成', stat:`${f}/${BASELINE.total}`, p:pct(f,BASELINE.total), cls:f>=BASELINE.total?'done':(f>0?'stage4':'pending'), c:f>=BASELINE.total?'var(--green)':(f>0?'#8b5cf6':'#e5e7eb')},
+    {n:5, name:'车辆上架', stat:`${l}/${BASELINE.total}`, p:pct(l,BASELINE.total), cls:l>=BASELINE.total?'done':(l>0?'stage5':'pending'), c:l>=BASELINE.total?'var(--green)':(l>0?'#f97316':'#e5e7eb')}
   ];
   document.getElementById('pipeline').innerHTML = stages.map(s => `
-    <div class="ps-stage ${s.cls}"><div class="ps-num">${s.n}</div><div class="ps-name">${s.name}</div><div class="ps-stat">${s.stat}</div><div class="ps-bar"><div class="ps-bar-fill" style="width:${s.p}%;background:${s.p>=100?'var(--green)':s.p>0?'var(--blue)':'#e5e7eb'}"></div></div></div>
+    <div class="ps-stage ${s.cls}"><div class="ps-num" style="background:${s.p>0?s.c:''};color:${s.p>0?'#fff':''}">${s.n}</div><div class="ps-name">${s.name}</div><div class="ps-stat" style="color:${s.p>0?s.c:'var(--text-secondary)'}">${s.stat}</div><div class="ps-bar"><div class="ps-bar-fill" style="width:${s.p}%;background:${s.p>=100?'var(--green)':s.p>0?s.c:'#e5e7eb'}"></div></div></div>
   `).join('');
 }
 
