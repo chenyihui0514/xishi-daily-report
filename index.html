@@ -555,13 +555,14 @@ function exportSnapshot(){
   const notesBox=document.getElementById('notesBox');
   const cityBox=document.getElementById('cityBox');
   const alertContent=document.getElementById('alertContent');
+  const notesArea=document.getElementById('notesArea');
 
   // Save original styles
   const orig = {
     cW: container.style.width, cMW: container.style.maxWidth,
     tcD: twoCol.style.display, rCD: rightCol?rightCol.style.display:'',
     rCF: rightCol?rightCol.style.flex:'', rCFD: rightCol?rightCol.style.flexDirection:'',
-    aOF: alertBox.style.flex, nOF: notesBox.style.flex,
+    aOF: alertBox.style.flex, nOF: notesBox.style.flex, nOH: notesArea.style.height,
     acO: alertContent.style.overflow, acOY: alertContent.style.overflowY, acH: alertContent.style.maxHeight
   };
 
@@ -572,6 +573,7 @@ function exportSnapshot(){
   cityBox.style.marginBottom='10px';
   alertBox.style.flex='none'; alertBox.style.marginBottom='10px';
   notesBox.style.flex='none';
+  notesArea.style.height=notesArea.scrollHeight+'px'; notesArea.style.overflow='visible';
   alertContent.style.overflow='visible'; alertContent.style.overflowY='visible'; alertContent.style.maxHeight='none';
   detail.style.display='none';
   if(titleEl) titleEl.style.display='none';
@@ -584,6 +586,7 @@ function exportSnapshot(){
     cityBox.style.marginBottom='';
     alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
     notesBox.style.flex=orig.nOF;
+    notesArea.style.height=orig.nOH;
     alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
@@ -598,6 +601,7 @@ function exportSnapshot(){
     cityBox.style.marginBottom='';
     alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
     notesBox.style.flex=orig.nOF;
+    notesArea.style.height=orig.nOH;
     alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
