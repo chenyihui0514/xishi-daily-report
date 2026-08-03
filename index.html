@@ -420,12 +420,12 @@ function renderCityContent() {
     const c=state.cities[city]; if(!c) return '';
     const t=BASELINE.cities[city], cd=getDeliverableByCity(city);
     const lP=pct(c.l,t), dP=pct(cd,t), fP=pct(c.f,t);
-    return `<tr><td class="ct-name">${city}</td><td><strong>${t}</strong></td><td>${cd}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td>${c.f}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${fP}%;background:var(--green)"></div><div class="ct-seg" style="width:${dP-fP}%;background:var(--blue)"></div><div class="ct-seg" style="width:${100-dP}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary)">${fP}%</span></td><td>${c.l}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td></tr>`;
+    return `<tr><td class="ct-name">${city}</td><td><strong>${t}</strong></td><td>${cd}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td>${c.f}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${fP}%;background:var(--green)"></div><div class="ct-seg" style="width:${100-fP}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary)">${fP}%</span></td><td>${c.l}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td></tr>`;
   }).join('');
   document.getElementById('cityContent').innerHTML = `
     <table class="city-table">
       <thead><tr><th>车辆所在城市</th><th>总量</th><th>可交付</th><th>已交付</th><th>交付进度</th><th>车辆上架</th></tr></thead>
-      <tbody>${rows}<tr style="background:var(--gray-light);font-weight:600;"><td class="ct-name">合计</td><td><strong>${BASELINE.total}</strong></td><td>${td}</td><td>${tf}</td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${pct(tf,BASELINE.total)}%;background:var(--green)"></div><div class="ct-seg" style="width:${pct(td-tf,BASELINE.total)}%;background:var(--blue)"></div><div class="ct-seg" style="width:${100-pct(td,BASELINE.total)}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary);margin-left:4px">${pct(tf,BASELINE.total)}%</span></td><td>${tl}</td></tr></tbody>
+      <tbody>${rows}<tr style="background:var(--gray-light);font-weight:600;"><td class="ct-name">合计</td><td><strong>${BASELINE.total}</strong></td><td>${td}</td><td>${tf}</td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${pct(tf,BASELINE.total)}%;background:var(--green)"></div><div class="ct-seg" style="width:${100-pct(tf,BASELINE.total)}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary);margin-left:4px">${pct(tf,BASELINE.total)}%</span></td><td>${tl}</td></tr></tbody>
     </table>`;
 }
 
