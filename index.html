@@ -530,19 +530,22 @@ function exportSnapshot(){
   btn.textContent='⏳ 生成中...'; btn.disabled=true;
   const detail=document.getElementById('detailSection');
   const titleEl=detail.previousElementSibling;
+  const container=document.querySelector('.container');
+  const origW=container.style.width, origMW=container.style.maxWidth;
+  container.style.width='1200px'; container.style.maxWidth='none';
   detail.style.display='none';
   if(titleEl) titleEl.style.display='none';
-  html2canvas(document.querySelector('.container'), { scale: 2, backgroundColor: '#f5f6f8', useCORS: true }).then(canvas => {
+  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:1200 }).then(canvas => {
+    container.style.width=origW; container.style.maxWidth=origMW;
+    detail.style.display=''; if(titleEl) titleEl.style.display='';
+    btn.textContent='📥 导出'; btn.disabled=false;
     const link=document.createElement('a');
     link.download=`西十日报快照_${state.reportDate}.jpg`;
     link.href=canvas.toDataURL('image/jpeg', 0.9);
     link.click();
-    detail.style.display='';
-    if(titleEl) titleEl.style.display='';
-    btn.textContent='📥 导出'; btn.disabled=false;
   }).catch(() => {
-    detail.style.display='';
-    if(titleEl) titleEl.style.display='';
+    container.style.width=origW; container.style.maxWidth=origMW;
+    detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
     alert('导出失败，请重试');
   });
