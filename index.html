@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>西十项目交付日报</title>
+<title>西十日报</title>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <style>
@@ -194,7 +194,7 @@
 
 <div class="header-bar">
   <div class="hb-left">
-    <span class="hb-title">西十项目交付日报</span>
+    <span class="hb-title">西十日报</span>
     <span class="hb-meta">客户：西十网络科技 | 204台 · 8城市 · 就地交接</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px;">
@@ -556,7 +556,7 @@ function exportSnapshot(){
   };
 
   // Export layout: single column, no overflow
-  container.style.width='1000px'; container.style.maxWidth='none';
+  container.style.width='750px'; container.style.maxWidth='none';
   twoCol.style.display='block';
   if(rightCol){ rightCol.style.display='block'; rightCol.style.flex='none'; rightCol.style.flexDirection='column'; }
   cityBox.style.marginBottom='10px';
@@ -566,7 +566,7 @@ function exportSnapshot(){
   detail.style.display='none';
   if(titleEl) titleEl.style.display='none';
 
-  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:1000 }).then(canvas => {
+  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:750 }).then(canvas => {
     // Restore
     container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
     twoCol.style.display=orig.tcD;
