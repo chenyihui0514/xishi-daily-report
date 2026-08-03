@@ -539,12 +539,42 @@ function exportSnapshot(){
   const detail=document.getElementById('detailSection');
   const titleEl=detail.previousElementSibling;
   const container=document.querySelector('.container');
-  const origW=container.style.width, origMW=container.style.maxWidth;
-  container.style.width='1200px'; container.style.maxWidth='none';
+  const twoCol=document.querySelector('.two-col');
+  const rightCol=document.querySelector('.right-col');
+  const alertBox=document.getElementById('alertBox');
+  const notesBox=document.getElementById('notesBox');
+  const cityBox=document.getElementById('cityBox');
+  const alertContent=document.getElementById('alertContent');
+
+  // Save original styles
+  const orig = {
+    cW: container.style.width, cMW: container.style.maxWidth,
+    tcD: twoCol.style.display, rCD: rightCol?rightCol.style.display:'',
+    rCF: rightCol?rightCol.style.flex:'', rCFD: rightCol?rightCol.style.flexDirection:'',
+    aOF: alertBox.style.flex, nOF: notesBox.style.flex,
+    acO: alertContent.style.overflow, acOY: alertContent.style.overflowY, acH: alertContent.style.maxHeight
+  };
+
+  // Export layout: single column, no overflow
+  container.style.width='1000px'; container.style.maxWidth='none';
+  twoCol.style.display='block';
+  if(rightCol){ rightCol.style.display='block'; rightCol.style.flex='none'; rightCol.style.flexDirection='column'; }
+  cityBox.style.marginBottom='10px';
+  alertBox.style.flex='none'; alertBox.style.marginBottom='10px';
+  notesBox.style.flex='none';
+  alertContent.style.overflow='visible'; alertContent.style.overflowY='visible'; alertContent.style.maxHeight='none';
   detail.style.display='none';
   if(titleEl) titleEl.style.display='none';
-  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:1200 }).then(canvas => {
-    container.style.width=origW; container.style.maxWidth=origMW;
+
+  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:1000 }).then(canvas => {
+    // Restore
+    container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
+    twoCol.style.display=orig.tcD;
+    if(rightCol){ rightCol.style.display=orig.rCD; rightCol.style.flex=orig.rCF; rightCol.style.flexDirection=orig.rCFD; }
+    cityBox.style.marginBottom='';
+    alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
+    notesBox.style.flex=orig.nOF;
+    alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
     const link=document.createElement('a');
@@ -552,7 +582,13 @@ function exportSnapshot(){
     link.href=canvas.toDataURL('image/jpeg', 0.9);
     link.click();
   }).catch(() => {
-    container.style.width=origW; container.style.maxWidth=origMW;
+    container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
+    twoCol.style.display=orig.tcD;
+    if(rightCol){ rightCol.style.display=orig.rCD; rightCol.style.flex=orig.rCF; rightCol.style.flexDirection=orig.rCFD; }
+    cityBox.style.marginBottom='';
+    alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
+    notesBox.style.flex=orig.nOF;
+    alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
     detail.style.display=''; if(titleEl) titleEl.style.display='';
     btn.textContent='📥 导出'; btn.disabled=false;
     alert('导出失败，请重试');
