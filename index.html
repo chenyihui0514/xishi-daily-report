@@ -307,60 +307,50 @@ for (let c in BASELINE.cities) state.cities[c] = { l: 0, f: 0 };
 
 // 从 localStorage 恢复上次保存的进度
 function saveProgress() {
-  const data = {cities:{},vins:[...DELIVERABLE_VINS]};
-  for (let c in state.cities) data.cities[c]={l:state.cities[c].l,f:state.cities[c].f};
-  localStorage.setItem('xishi_progress',JSON.stringify(data));
+  const data = {
+    date: state.reportDate,
+    jqx: state.jqxDone,
+    syx: state.syxDone,
+    cities: {},
+    vins: [...DELIVERABLE_VINS]
+  };
+  for (let c in state.cities) data.cities[c] = { l: state.cities[c].l, f: state.cities[c].f };
+  localStorage.setItem('xishi_progress', JSON.stringify(data));
 }
-function parseXlsx(buf){
-  const wb=XLSX.read(buf,{type:'array'});
-  const sh=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(sh,{header:1});
-  DELIVERABLE_VINS.clear();
-  const notes=[];
-  for(let c in BASELINE.cities) state.cities[c]={l:0,f:0};
-  for(let i=1;i<rows.length;i++){
-    const r=rows[i]; if(!r[1]) continue;
-    const vin=String(r[1]||'').trim(), city=String(r[3]||'').trim(), plate=String(r[2]||'').trim();
-    if(Number(r[7])>40000) DELIVERABLE_VINS.add(vin);
-    if(state.cities[city]){
-      if(Number(r[8])>40000) state.cities[city].f++;
-      if(Number(r[9])>40000) state.cities[city].l++;
-    }
-    // 收集备注信息
-    const note=String(r[6]||'').trim();
-    if(note) notes.push(plate+' '+city+'：'+note);
-  }
-  // 展示备注
-  const ta=document.getElementById('notesArea');
-  if(ta&&notes.length) ta.value=notes.join('\n');
-}
-async function loadDataFromXlsx(){
-  try{
-    const resp=await fetch('xishi_data.xlsx');
-    if(resp.ok){ const buf=await resp.arrayBuffer(); parseXlsx(buf); }
-    // 加载通用备注文件
-    try{
-      const nr=await fetch('xishi_notes.txt');
-      if(nr.ok){
-        const ntxt=await nr.text();
-        const ta=document.getElementById('notesArea');
-        if(ta&&ntxt.trim()) ta.value=ntxt.trim()+'\n\n'+ta.value;
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem('xishi_progress');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.date) state.reportDate = data.date;
+      if (typeof data.jqx === 'number') state.jqxDone = data.jqx;
+      if (typeof data.syx === 'number') state.syxDone = data.syx;
+      if (data.vins && data.vins.length) {
+        DELIVERABLE_VINS.clear(); data.vins.forEach(v=>DELIVERABLE_VINS.add(v));
       }
-    }catch(e){}
-  }catch(e){console.warn('xlsx load failed');
-    const raw=localStorage.getItem('xishi_progress');
-    const raw=localStorage.getItem('xishi_progress');
-    if(raw){const d=JSON.parse(raw);
-      if(d.vins)d.vins.forEach(v=>DELIVERABLE_VINS.add(v));
-      if(d.cities)for(let c in d.cities)if(state.cities[c]){state.cities[c].l=d.cities[c].l;state.cities[c].f=d.cities[c].f;}
+      if (data.cities) {
+        for (let c in data.cities) {
+          if (state.cities[c]) {
+            if (typeof data.cities[c].l === 'number') state.cities[c].l = data.cities[c].l;
+            if (typeof data.cities[c].f === 'number') state.cities[c].f = data.cities[c].f;
+          }
+        }
+      }
+      return; // 有缓存就用缓存
+    }
+  } catch(e) {}
+  // 没有缓存 → 使用底表初始数据
+  for (let c in INITIAL_CITIES) {
+    if (state.cities[c]) {
+      state.cities[c].l = INITIAL_CITIES[c].l;
+      state.cities[c].f = INITIAL_CITIES[c].f;
     }
   }
-  init();
 }
 
-const DELIVERABLE_VINS = new Set();
+const DELIVERABLE_VINS = new Set(["LFV1A2154R6044092", "LFV1A2155R6037734", "LUZBGAFB1NA071066", "LSGUA84L2PG045528", "LGXC74C49P0578920", "LGXC74C40P0731104", "LGXC74C43P0724812", "HLX33B129P1140580", "HLX33B120P1169076", "HLX33B121P1168194", "HLX33B122P1172416", "HLX33B122P1773504", "HLX33B122P1774314", "HLX33B123P1774287", "HLX33B124P1169470", "HLX33B127P1168992", "HLX33B127P1172122", "HLX33B128P1168144", "HLX33B128P1169441", "HLX33B129P1170128", "HLX33B12XP1169814", "LRWYGCFS0PC168462", "LRWYGCFS9PC168296", "LRWYGCFS2PC046587", "LRWYGCFSXPC046157", "LRWYGCFS0PC046197", "LRWYGCFS2PC961746", "LRWYGCFS3PC046260", "LRWYGCFS3PC046565", "LRWYGCFS4PC046316", "LRWYGCFS4PC046347", "LRWYGCFS7PC046360", "LRWYGCFS7PC046696", "LRWYGCFS9PC046084", "HLX33B127R0768677", "HLX33B122R0768375", "HLX33B122R0767050", "HLX33B121R0767797", "HLX33B129R0770429", "HLX33B128R0771264", "HLX33B128R0771006", "HLX33B127R0768260", "HLX33B126R0770128", "HLX33B125R0767348", "HLX33B120R0767371", "HLX33B126R0767066", "HLX33B121R0767055", "HLX33B123R0770166", "HLX33B121R0767119", "HLX33B127R0769991", "HLX33B126R0767231", "HLX33B125R0767172", "HLX33B127R0767075", "HLX33B126S0401128", "LK6ADAE48PB634562", "LK6ADAE47PB632771", "LK6ADAE40PB635379", "LSGUA84L9PG045428", "LSGUA84L4PG045529", "LSGUA84L3PG045179", "LSGUA84L1PG044984", "LSKG4BC17PD068781", "LSKG4BC16PD071512", "LSKG4BC12PD071555", "LDP95C960PE110829", "LDP95E96XPE113622", "HLX33B12XS1403054", "HLX33B125S1704847", "HLX33B124S1402921", "HLX33B123S1704491", "LC0D74C47P0678263", "L1NSSGH93NA204821", "LC0C76C4XS0392620", "LC0C76C48S0389473", "LC0C76C48S0389456", "LSJWT4096RS095087", "LSJWR4093RS112541", "LSJWR4097RS112543", "LRWYGCFS8PC864597", "LRWYGCFS9PC866312", "LSJWR4090RS106468", "LSJWR4094RS110314", "LSJWR409XRS056498", "LSJWT4097RS085460", "LSJWT4097RS091565", "LSJWR4091PS129352", "LSJWR4091RS108505", "LSJWR4092RS107136", "LSJWR4093RS108506", "LSJWR4096RS107138", "LSJWR4098RS108503", "LSJWT4090RS092931", "LSJWT4092RS085236", "LSJWT4098RS092336", "LSJWT4099RS085590", "LK6ADAE20PB869424", "LK6ADAE22PB872938", "LK6ADAE23PB859244", "LK6ADAE23PB861060", "LK6ADAE23PB871586", "LK6ADAE23PB872897", "LK6ADAE23PB872933", "LK6ADAE23PB872964", "LK6ADAE24PB872925", "LK6ADAE25PB859245", "LK6ADAE25PB861058", "LK6ADAE26PB872912", "LK6ADAE27PB862034", "LK6ADAE27PB869422", "LK6ADAE27PB872885", "LK6ADAE28PB861054", "LSJWR4091RS108293", "LSJWR4094RS108501", "LSJWR4095PS129323", "LSJWR4096RS108497", "LSJWR4096RS108502", "LSJWR4097PS128741", "LSJWR4097RS108508", "LSJWR4098RS107139", "LSJWR4098RS108498", "LSJWR4099RS056489", "LSJWR4099RS108297", "LSJWR409XRS108504", "LSJWT4091RS089987", "LSJWT4092RS093157", "LSJWT4093RS093166", "LSJWT4094RS088705", "LSJWT409XRS088708", "LDP95E965PE113737", "LFV1A2157R6034639", "LRWYGCFS6PC864534"]);
 
-loadDataFromXlsx();
+loadProgress();
 
 let vehicles = VEHICLES_RAW.map(v => ({...v}));
 
@@ -386,6 +376,9 @@ function pct(a,b) { return b>0 ? Math.round(a/b*100) : 0; }
 function init() {
   document.getElementById('genTime').textContent = new Date().toLocaleString('zh-CN');
   document.getElementById('reportDate').textContent = state.reportDate;
+  // 恢复备注
+  const saved = localStorage.getItem('xishi_note');
+  if (saved) document.getElementById('notesArea').value = saved;
   document.getElementById('notesArea').addEventListener('input', function() {
     localStorage.setItem('xishi_note', this.value);
   });
@@ -620,6 +613,7 @@ function exportSnapshot(){
   });
 }
 
+init();
 </script>
 </body>
 </html>
