@@ -449,7 +449,7 @@ function renderAlertContent() {
   const gpsDetail=gpsParts.join(' · ');
 
   document.getElementById('alertContent').innerHTML = `
-    <div class="alert-item ${jqxM>30?'critical':''}">
+    <div class="alert-item" style="border-left-color:#f97316;">
       <div class="ai-title">⚠️ 保险缺失：交强险${jqxM}台 · 商业险${syxM}台 · 双覆盖${state.overlapDone}台</div>
       <div class="ai-detail">交强险<strong>${pct(state.jqxDone,BASELINE.jqxTotal)}%</strong>，商业险<strong>${pct(state.syxDone,BASELINE.syxTotal)}%</strong>，双覆盖<strong>${pct(state.overlapDone,BASELINE.total)}%</strong>。无保险不得发车。</div>
     </div>
