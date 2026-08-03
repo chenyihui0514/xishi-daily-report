@@ -206,7 +206,7 @@
     </div>
   </div>
   <div class="hb-qr">
-    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJQAAACUCAIAAAD6XpeDAAADsUlEQVR4nO2dwY3cMAxFd4N0oSLSfxkpwnVsrj5EgLgk7X3Se8cZjyTMB0WQJqXPr6+vD2Hy6+0FyPdRPDCKB0bxwCgeGMUDo3hgfs++GONP+WTX9fe/498/n61h9syM6G9nz2fGqWI2r5YHRvHAKN6OPu9O1N9EfUD0mcx6VuatWk/3/6blgVE8MIq3u8+L7sVVPik65miIsarG7/jftDwwigdG8U7yeVWs5A/vn3fkOa/JXLN1zsZ8Cy0PjOKBUTwwr/m8lbxiJra7FnwnHS0PjOKBUbyTfF5V3jIaP0VzgyPxfEds15Hv1fLAKB4Yxdvd53XERplcZZVvW2El77ry2w60PDCKB0bxdvR5HXFJZvxM/8CT83b/b3e0PDCKB0bxdu/Pe7KOY8VnRPv5RlG9ZaaPMLM2+/M2xG0TjOKBaelVyNRnrsyV6TG/U5UXzdSRrsw7Q8sDo3hgFA/M5+y8zap9uSr26q4rGcH6z+54bmUuLQ+M4oFRvFPrNqv8YjQWjL5LG0XninX0XWT6KLQ8MIoHRvFOOnss07u90g+e6ckbC3P9NDLxq5YHRvHAKN6Ouc0oHWdGv/W+bUaVv48+M0PLA6N4YBQPTNk5LFV1klVcDXUrmbqbDn+s5YFRPDCKt3uc92QMV+WrZlTVgs6oeqdoDcvmuG2CUbzd6zarcnd3qmo4x4P9DJn4L7q2FbQ8MIoHRvHAlPXnZXxPd43JePD+2+gz9qQfitsmGMUD03KvQtXZzU/WW47EfUN3qmLBFbQ8MIoHRvFO6kmvyuN1nG12FeUzo2t4K+ep5YFRPDCKB6blHJaMv3yyRmYU3UM7G3/lt5n1aHlgFA+M4p3Ukx4lc/9Odw3nCt1nbNqfdyhum2AUD0zLGdNV8dzKmFdD/Wd330J0TM/b3BC3TTCKB6a9J73j/d9bsdrVfK+67/MOwm0TjOKBaalh6ajb7M4xXj/sjsAVtDwwigdG8cCUnbcZpSqHeTXUpHTMFY19rWHZHLdNMIq3+z3pVXTcmRCl+31hZp3mNg/CbROM4oFpr9t8sq7kTlUc9pZfXxlTywOjeGAUD0x73eYKVXfAdpx5Fo3tVqh6d6jlgVE8MIoHpuXssSiUes4rUZvTcT+7lgdG8cAoHpjXfF5HrnLcnunwhd01MlG0PDCKB0bxTvJ5T96B8FZvOAUtD4zigVG8U8/bjNJ9lsqMJ892iWJu81DcNsEoHpjX+vMkj5YHRvHAKB4YxQOjeGAUD4zifXD5BxRlqxXONkzbAAAAAElFTkSuQmCC" alt="二维码">
+    <img id="qrImg" src="" alt="二维码">
     <span class="qr-label">查看车辆明细<br>请扫描二维码</span>
   </div>
 </div>
@@ -383,6 +383,8 @@ function init() {
   document.getElementById('notesArea').addEventListener('input', function() {
     localStorage.setItem('xishi_note', this.value);
   });
+  // 动态生成正确网址的二维码
+  document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(window.location.href);
   renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
   populateFilters(); renderTable();
 }
