@@ -317,16 +317,23 @@ function parseXlsx(buf){
   const sh=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(sh,{header:1});
   DELIVERABLE_VINS.clear();
+  const notes=[];
   for(let c in BASELINE.cities) state.cities[c]={l:0,f:0};
   for(let i=1;i<rows.length;i++){
     const r=rows[i]; if(!r[1]) continue;
-    const vin=String(r[1]||'').trim(), city=String(r[3]||'').trim();
+    const vin=String(r[1]||'').trim(), city=String(r[3]||'').trim(), plate=String(r[2]||'').trim();
     if(Number(r[7])>40000) DELIVERABLE_VINS.add(vin);
     if(state.cities[city]){
       if(Number(r[8])>40000) state.cities[city].f++;
       if(Number(r[9])>40000) state.cities[city].l++;
     }
+    // 收集备注信息
+    const note=String(r[6]||'').trim();
+    if(note) notes.push(plate+' '+city+'：'+note);
   }
+  // 展示备注
+  const ta=document.getElementById('notesArea');
+  if(ta&&notes.length) ta.value=notes.join('\n');
 }
 async function loadDataFromXlsx(){
   try{
@@ -370,9 +377,6 @@ function pct(a,b) { return b>0 ? Math.round(a/b*100) : 0; }
 function init() {
   document.getElementById('genTime').textContent = new Date().toLocaleString('zh-CN');
   document.getElementById('reportDate').textContent = state.reportDate;
-  // 恢复备注
-  const saved = localStorage.getItem('xishi_note');
-  if (saved) document.getElementById('notesArea').value = saved;
   document.getElementById('notesArea').addEventListener('input', function() {
     localStorage.setItem('xishi_note', this.value);
   });
