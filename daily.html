@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>西十日报</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f8; --card-bg: #ffffff; --text: #1a1a2e; --text-secondary: #6b7280;
+    --border: #e5e7eb; --blue: #3b82f6; --blue-light: #eff6ff; --green: #10b981;
+    --green-light: #ecfdf5; --amber: #f59e0b; --amber-light: #fffbeb; --red: #ef4444;
+    --red-light: #fef2f2; --gray-light: #f9fafb;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04); --radius: 8px; --radius-sm: 5px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; padding: 12px 16px;
+    font-size: 14px; -webkit-text-size-adjust: 100%;
+  }
+  .container { max-width: 1440px; margin: 0 auto; }
+
+  .header-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px;
+    flex-wrap: wrap; gap: 8px; position: relative;
+  }
+  .header-bar .hb-left { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .header-bar .hb-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+  .header-bar .hb-meta { font-size: 12px; color: var(--text-secondary); }
+  .header-bar .hb-date { font-size: 13px; font-weight: 600; padding: 2px 8px; background: var(--blue-light); color: var(--blue); border-radius: 10px; white-space: nowrap; }
+  .header-bar .hb-actions { display: flex; gap: 6px; }
+  .header-bar .hb-qr { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .header-bar .hb-qr img { width: 52px; height: 52px; border-radius: 4px; border: 1px solid var(--border); }
+  .header-bar .hb-qr .qr-label { font-size: 11px; color: var(--text-secondary); line-height: 1.3; max-width: 60px; }
+  .btn { padding: 4px 12px; border-radius: var(--radius-sm); font-size: 13px; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-weight: 500; color: var(--text); white-space: nowrap; }
+  .btn:hover { border-color: var(--blue); color: var(--blue); }
+  .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-primary:hover { background: #2563eb; color: #fff; }
+
+  .pipeline-strip {
+    display: flex; align-items: stretch; background: var(--card-bg);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden;
+  }
+  .pipeline-strip .ps-stage {
+    flex: 1; padding: 8px 6px; text-align: center; position: relative;
+    border-right: 1px solid var(--border); transition: background 0.2s; min-width: 0;
+  }
+  .pipeline-strip .ps-stage:last-child { border-right: none; }
+  .pipeline-strip .ps-stage.done { background: var(--green-light); }
+  .pipeline-strip .ps-stage.active { background: var(--blue-light); }
+  .pipeline-strip .ps-stage.risk { background: var(--amber-light); }
+  .pipeline-strip .ps-stage.stage4 { background: #f5f3ff; }
+  .pipeline-strip .ps-stage.stage5 { background: #fff7ed; }
+  .ps-stage .ps-num { display: inline-block; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 700; line-height: 18px; margin-bottom: 3px; background: #e5e7eb; color: var(--text-secondary); }
+  .ps-stage.done .ps-num { background: var(--green); color: #fff; }
+  .ps-stage.active .ps-num { background: var(--blue); color: #fff; }
+  .ps-stage.risk .ps-num { background: var(--amber); color: #fff; }
+  .ps-stage .ps-name { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .ps-stage .ps-stat { font-size: 15px; font-weight: 700; }
+  .ps-stage.done .ps-stat { color: var(--green); }
+  .ps-stage.active .ps-stat { color: var(--blue); }
+  .ps-stage.risk .ps-stat { color: var(--amber); }
+  .ps-stage.pending .ps-stat { color: var(--text-secondary); }
+  .ps-stage .ps-bar { margin-top: 3px; height: 3px; background: #e5e7eb; border-radius: 2px; overflow: hidden; }
+  .ps-stage .ps-bar-fill { height: 100%; border-radius: 2px; }
+
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .summary-card { background: var(--card-bg); border-radius: var(--radius); padding: 8px 12px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .summary-card .sc-icon { font-size: 20px; flex-shrink: 0; }
+  .summary-card .sc-body { min-width: 0; }
+  .summary-card .sc-value { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .summary-card .sc-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+  .right-col { display: flex; flex-direction: column; gap: 10px; }
+  .right-col .section-box { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .right-col #alertBox { flex: 2; }
+  .right-col #notesBox { flex: 1; }
+  .right-col .section-box .sb-hd { flex-shrink: 0; }
+  #alertContent { flex: 1; overflow-y: auto; }
+  .section-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .section-box .sb-hd { padding: 6px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); background: var(--gray-light); display: flex; align-items: center; gap: 5px; }
+  .section-box .sb-hd .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+
+  #notesArea { width: 100%; min-height: 0; flex: 1; border: none; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: none; outline: none; color: var(--text); background: var(--card-bg); line-height: 1.6; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+  #notesArea::placeholder { color: #c0c4cc; }
+  #notesArea:focus { background: #fafbfc; }
+
+  .city-table { width: 100%; font-size: 13px; table-layout: fixed; }
+  .city-table th { padding: 5px 5px; text-align: center; font-weight: 600; font-size: 10px; color: var(--text-secondary); background: var(--gray-light); border-bottom: 1px solid var(--border); }
+  .city-table td { padding: 5px 5px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .city-table tbody tr:hover { background: #f8fafc; }
+  .city-table .ct-name { text-align: center; font-weight: 600; }
+  .city-table th:nth-child(1), .city-table td:nth-child(1) { width: 14%; }
+  .city-table th:nth-child(2), .city-table td:nth-child(2) { width: 11%; }
+  .city-table th:nth-child(3), .city-table td:nth-child(3) { width: 16%; }
+  .city-table th:nth-child(4), .city-table td:nth-child(4) { width: 13%; }
+  .city-table th:nth-child(5), .city-table td:nth-child(5) { width: 30%; }
+  .city-table th:nth-child(6), .city-table td:nth-child(6) { width: 16%; }
+  .ct-mini-bar { display: flex; gap: 1px; height: 5px; border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .ct-mini-bar .ct-seg { height: 100%; }
+
+  .alert-item { padding: 8px 12px; border-bottom: 1px solid var(--border); border-left: 3px solid var(--amber); font-size: 12px; }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item.critical { border-left-color: var(--red); }
+  .alert-item.info { border-left-color: var(--blue); }
+  .alert-item .ai-title { font-weight: 600; margin-bottom: 1px; }
+  .alert-item .ai-detail { color: var(--text-secondary); }
+
+  .table-wrap { background: var(--card-bg); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 6px; background: var(--gray-light); }
+  .table-toolbar .filter-group { display: flex; gap: 5px; flex-wrap: wrap; }
+  .table-toolbar select, .table-toolbar input { padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; background: #fff; max-width: 120px; }
+  .table-scroll { overflow-x: auto; max-height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table thead { position: sticky; top: 0; z-index: 1; }
+  table th { background: #f1f5f9; padding: 6px 8px; text-align: left; font-weight: 600; font-size: 10px; color: var(--text-secondary); border-bottom: 2px solid var(--border); white-space: nowrap; }
+  table td { padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table tbody tr:hover { background: #f8fafc; }
+  .badge { display: inline-block; padding: 1px 5px; border-radius: 8px; font-size: 10px; font-weight: 500; }
+  .badge-green { background: var(--green-light); color: #065f46; }
+  .badge-amber { background: var(--amber-light); color: #92400e; }
+  .badge-red { background: var(--red-light); color: #991b1b; }
+  .badge-blue { background: var(--blue-light); color: #1e40af; }
+  .badge-gray { background: #f3f4f6; color: #6b7280; }
+  .count-info { font-size: 11px; color: var(--text-secondary); }
+  .section-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+  .section-title .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
+  .footer-dash { text-align: center; font-size: 10px; color: var(--text-secondary); padding: 8px 0; margin-top: 4px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: #fff; border-radius: 10px; padding: 20px; max-width: 680px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(0,0,0,0.12); }
+  .modal-box h3 { font-size: 15px; margin-bottom: 3px; }
+  .modal-box .modal-desc { font-size: 11px; color: #6b7280; margin-bottom: 14px; }
+  .modal-box label { font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px; }
+  .modal-box input[type="date"], .modal-box input[type="number"] { width: 100%; padding: 5px 7px; border: 1px solid #e5e7eb; border-radius: 5px; margin-bottom: 8px; font-size: 13px; }
+  .modal-box .city-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
+  .modal-box .city-edit-item { padding: 6px; background: #f9fafb; border-radius: 5px; font-size: 11px; }
+  .modal-box .city-edit-item strong { font-size: 11px; display: block; margin-bottom: 3px; }
+  .modal-box .city-edit-item .inline-inputs { display: flex; gap: 4px; align-items: center; }
+  .modal-box .city-edit-item .inline-inputs input { width: 42px; padding: 2px 3px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 11px; margin-bottom: 0; text-align: center; }
+  .modal-box .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  @media (max-width: 1024px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    body { padding: 8px 10px; font-size: 12px; }
+    .header-bar { padding: 8px 10px; gap: 6px; }
+    .header-bar .hb-title { font-size: 14px; }
+    .header-bar .hb-meta { font-size: 10px; display: none; }
+    .header-bar .hb-qr img { width: 44px; height: 44px; }
+    .header-bar .hb-qr .qr-label { font-size: 9px; max-width: 50px; }
+    .pipeline-strip .ps-stage { padding: 6px 4px; }
+    .pipeline-strip .ps-name { font-size: 10px; }
+    .pipeline-strip .ps-stat { font-size: 11px; }
+    .summary-row { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .summary-card { padding: 6px 10px; }
+    .summary-card .sc-value { font-size: 17px; }
+    .summary-card .sc-label { font-size: 10px; }
+    .two-col { grid-template-columns: 1fr; gap: 8px; }
+    .city-table { font-size: 11px; }
+    .city-table th, .city-table td { padding: 4px 6px; }
+    .modal-box { padding: 16px; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 6px; }
+    .header-bar .hb-meta { display: none; }
+    .header-bar .hb-title { font-size: 13px; }
+    .header-bar .hb-date { font-size: 11px; }
+    .header-bar .hb-qr .qr-label { display: none; }
+    .header-bar .hb-qr img { width: 38px; height: 38px; }
+    .btn { font-size: 11px; padding: 3px 8px; }
+    .pipeline-strip { flex-wrap: wrap; }
+    .pipeline-strip .ps-stage { flex: 1 0 33.33%; border-bottom: 1px solid var(--border); }
+    .pipeline-strip .ps-stage:nth-child(n+4) { border-bottom: none; }
+    .summary-row { grid-template-columns: 1fr 1fr; gap: 5px; }
+    .summary-card .sc-value { font-size: 16px; }
+    .summary-card .sc-icon { font-size: 16px; }
+    .table-toolbar select, .table-toolbar input { max-width: 90px; font-size: 10px; }
+    table { font-size: 10px; }
+    table th, table td { padding: 4px 5px; }
+    .badge { font-size: 9px; padding: 1px 4px; }
+    .footer-dash { font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header-bar">
+  <div class="hb-left">
+    <span class="hb-title">西十日报</span>
+    <span class="hb-meta">客户：西十网络科技 | 204台 · 8城市 · 就地交接</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="hb-date">📅 <strong id="reportDate">2026-07-30</strong></span>
+    <div class="hb-actions">
+      <button class="btn" onclick="toggleEditMode()" id="editBtn">✏️ 更新进度</button>
+      <button class="btn btn-primary" onclick="exportSnapshot()">📥 导出</button>
+    </div>
+  </div>
+</div>
+
+<div class="pipeline-strip" id="pipeline"></div>
+<div class="summary-row" id="summaryRow"></div>
+
+<div class="two-col">
+  <div class="section-box" id="cityBox">
+    <div class="sb-hd"><span class="dot"></span>各车辆所在城市交付进度</div>
+    <div id="cityContent"></div>
+  </div>
+  <div class="right-col">
+  <div class="section-box" id="alertBox">
+    <div class="sb-hd"><span class="dot"></span>风险预警 & 待办</div>
+    <div id="alertContent"></div>
+  </div>
+  <div class="section-box" id="notesBox">
+    <div class="sb-hd"><span class="dot" style="background:#8b5cf6"></span>备注信息</div>
+    <textarea id="notesArea" placeholder="在此输入备注信息…"></textarea>
+  </div>
+  </div>
+</div>
+
+<div class="section-title"><span class="dot"></span>车辆明细 <span class="count-info" id="tableCount"></span></div>
+<div class="table-wrap" id="detailSection">
+  <div class="table-toolbar">
+    <div class="filter-group">
+      <select id="filterCity" onchange="renderTable()"><option value="">全部城市</option></select>
+      <select id="filterModel" onchange="renderTable()"><option value="">全部车型</option></select>
+      <select id="filterTag" onchange="renderTable()"><option value="">全部标签</option><option value="固定资产">固定资产</option><option value="固定资产(待处置)">待处置</option></select>
+      <select id="filterIns" onchange="renderTable()"><option value="">保险状态</option><option value="both">交商双覆盖</option><option value="jqx_only">仅交强险</option><option value="syx_only">仅商业险</option><option value="none">均无保险</option></select>
+      <input type="text" id="filterSearch" placeholder="搜车架号/车牌..." oninput="renderTable()">
+    </div>
+    <span class="count-info" id="filteredCount"></span>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>车架号</th><th>车牌</th><th>车型</th><th>车辆所在城市</th>
+          <th>标签</th><th>交强险</th><th>商业险</th><th>年检</th><th>GPS</th><th>违章</th><th>状态</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer-dash">西十项目 · 第一批交付日报 &nbsp;|&nbsp; 数据源：西十选车表-定稿0730.xlsx &nbsp;|&nbsp; 生成：<span id="genTime"></span></div>
+
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3>每日进度更新</h3>
+    <p class="modal-desc">修改各城市完成数量，应用后看板即时刷新。</p>
+    <label>数据日期</label>
+    <input type="date" id="editDate">
+    <label>各城市进度（上架 / 已交付）<span style="font-weight:400;color:var(--text-secondary)"> 可交付=自动计算</span></label>
+    <div class="city-edit-grid" id="editCityGrid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label>交强险已投保</label><input type="number" id="editJqx" min="0" max="204" value="138"></div>
+      <div><label>商业险已投保</label><input type="number" id="editSyx" min="0" max="204" value="81"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="toggleEditMode()">取消</button>
+      <input type="file" id="progressFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
+      <button class="btn" style="background:#eef2ff;color:#4f46e5" onclick="document.getElementById('progressFileInput').click()">📎 上传底表</button>
+      <button class="btn btn-primary" onclick="applyEdits()">✅ 应用更新</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const VEHICLES_RAW = [{"v":"LFV1A2154R6044092","p":"川GMV826","m":"大众宝来","c":"成都","t":"固定资产(待处置)","j":"2026-09-15","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LFV1A2155R6037734","p":"川GB95F3","m":"大众宝来","c":"成都","t":"固定资产(待处置)","j":"2026-09-14","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L7PG022228","p":"湘A7A7H7","m":"别克GL8","c":"三亚","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L3PG022663","p":"湘A0A1N5","m":"别克GL8","c":"三亚","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LFV2B2C19N3774085","p":"渝BS038U","m":"大众探影","c":"成都","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LFV2B2C16P3700125","p":"云A233VR","m":"大众探影","c":"三亚","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGH97PA018669","p":"粤ABX7623","m":"小鹏P5","c":"佛山","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGH91PA024449","p":"粤ABV0163","m":"小鹏P5","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB2NA199440","p":"晋ADB5009","m":"小鹏P7","c":"郑州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"原厂+无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB6PA014650","p":"粤ABX9051","m":"小鹏P7","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB5PA018530","p":"粤ABX2317","m":"小鹏P7","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"原厂+无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB5PA014669","p":"粤ABX1569","m":"小鹏P7","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"原厂+无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB4PA019023","p":"粤ABX2787","m":"小鹏P7","c":"佛山","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LUZBGAFB1NA071066","p":"粤AA24725","m":"合众哪吒U","c":"广州","t":"固定资产(待处置)","j":"2027-01-25","s":"无保险","n":"年检正常","g":"更换无源，有源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB3NA194716","p":"湘ADM3015","m":"小鹏P7","c":"长沙","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB1NA194715","p":"湘ADG6083","m":"小鹏P7","c":"长沙","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LDP95H964RE111093","p":"粤AG88076","m":"岚图梦想家","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费，有源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L2PG045528","p":"湘A8D8X8","m":"别克GL8","c":"长沙","t":"固定资产","j":"2026-09-10","s":"2026-09-10","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB6PA014924","p":"粤ABX6739","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB4PA019426","p":"粤ABX6775","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C42P0577382","p":"津AFE2553","m":"比亚迪宋PLUS","c":"成都","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C42P0583294","p":"粤AG56165","m":"比亚迪宋PLUS","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C44P0578940","p":"川AFL8507","m":"比亚迪宋PLUS","c":"成都","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C44P0583295","p":"粤AG38235","m":"比亚迪宋PLUS","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C47P0583291","p":"粤AG23593","m":"比亚迪宋PLUS","c":"成都","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C48P0528526","p":"粤AG20358","m":"比亚迪宋PLUS","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C49P0578920","p":"川AFL7561","m":"比亚迪宋PLUS","c":"武汉","t":"固定资产","j":"2026-10-11","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C40P0731104","p":"津AFS1185","m":"比亚迪宋PLUS","c":"郑州","t":"固定资产(待处置)","j":"2027-01-08","s":"2027-01-08","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LGXC74C43P0724812","p":"津AFS8608","m":"比亚迪宋PLUS","c":"武汉","t":"固定资产","j":"2027-02-04","s":"2027-02-04","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B129P1140580","p":"川AFR1699","m":"理想L8","c":"郑州","t":"固定资产","j":"2026-12-25","s":"2026-12-25","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B120P1169076","p":"云AFA6090","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-01-21","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B121P1168194","p":"湘AFB7235","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B121P1172052","p":"渝AFU9562","m":"理想L8","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B122P1172416","p":"云AFB7668","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-02-03","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B122P1773504","p":"湘AF71295","m":"理想L8","c":"广州","t":"固定资产","j":"2027-01-26","s":"2027-01-26","n":"年检正常","g":"正常","gi":"   ","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B122P1774314","p":"湘AF73675","m":"理想L8","c":"广州","t":"固定资产","j":"2027-01-26","s":"2027-01-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B123P1774287","p":"云AFB3811","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-02-03","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B124P1169470","p":"云AFA5576","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-01-21","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127P1168992","p":"云AFB8072","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-02-03","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127P1172122","p":"川AF49910","m":"理想L8","c":"武汉","t":"固定资产","j":"2027-01-30","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B128P1168144","p":"湘AFC2095","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-01-12","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B128P1169441","p":"湘AF73615","m":"理想L8","c":"长沙","t":"固定资产","j":"2026-12-18","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B128P1172047","p":"渝AFN9021","m":"理想L8","c":"昆明","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B129P1170128","p":"云AFB9991","m":"理想L8","c":"郑州","t":"固定资产","j":"2027-01-15","s":"2027-02-03","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B12XP1169814","p":"云AFA9861","m":"理想L8","c":"昆明","t":"固定资产","j":"2027-02-03","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS0PC168462","p":"川AAW3720","m":"特斯拉Model Y","c":"郑州","t":"固定资产","j":"2026-09-22","s":"2026-10-12","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS9PC168296","p":"川AB01860","m":"特斯拉Model Y","c":"长沙","t":"固定资产","j":"2026-09-22","s":"2026-10-12","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS0PC966010","p":"湘ADR3166","m":"特斯拉Model Y","c":"郑州","t":"固定资产","j":"2027-02-02","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS1PC778113","p":"川AB39046","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"2027-01-30","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS2PC046587","p":"粤AAL4541","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"2026-12-05","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS6PC046205","p":"粤AAC3249","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS6PC046883","p":"湘AA17356","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"2026-12-12","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS7PC046438","p":"川AB40539","m":"特斯拉Model Y","c":"郑州","t":"固定资产","j":"2027-01-09","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS7PC979482","p":"粤AC21359","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFSXPC046157","p":"粤AA33426","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"2026-12-05","n":"年检正常","g":"更换无源，有源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS0PC046197","p":"粤AA40131","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-11-16","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS0PC966007","p":"粤AA45016","m":"特斯拉Model Y","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS1PC046189","p":"渝AAP9761","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS2PC891472","p":"粤AA70495","m":"特斯拉Model Y","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS2PC961746","p":"津AAY3565","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"2027-02-04","s":"2027-02-04","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS3PC046260","p":"粤AA74981","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-11-16","s":"2027-02-02","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS3PC046324","p":"津AAY9096","m":"特斯拉Model Y","c":"郑州","t":"固定资产","j":"2026-12-12","s":"2026-12-12","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS3PC046565","p":"粤AA34485","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-11-14","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS3PC046579","p":"津AAY1838","m":"特斯拉Model Y","c":"郑州","t":"固定资产(待处置)","j":"2026-12-12","s":"2026-12-12","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS4PC046316","p":"粤AA21640","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS4PC046347","p":"粤AA44627","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"无保险","n":"年检正常","g":"无源续费，有源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS7PC046133","p":"渝AAP1820","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS7PC046360","p":"粤AA98411","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"无保险","n":"年检正常","g":"无源续费，有源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS7PC046696","p":"粤AA41041","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-05","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS9PC046084","p":"粤AA48965","m":"特斯拉Model Y","c":"广州","t":"固定资产","j":"2026-12-24","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS9PC993139","p":"川AB32235","m":"特斯拉Model Y","c":"武汉","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFSXPC066201","p":"粤AAC5041","m":"特斯拉Model Y","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127R0768677","p":"粤AGN3593","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B122R0768375","p":"粤AFW3830","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B122R0767050","p":"粤AGE7525","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B121R0767797","p":"粤AGR8063","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B129R0770429","p":"粤AFP6385","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B128R0771264","p":"粤AG41799","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B128R0771006","p":"粤AGN9386","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127R0768260","p":"粤AGP8038","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B126R0770128","p":"粤AFX9133","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B125R0767348","p":"粤AGQ3883","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B120R0767371","p":"粤AGP9936","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B126R0767066","p":"粤AG05545","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B121R0767055","p":"粤AGQ6699","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B123R0770166","p":"粤AGP9595","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B121R0767119","p":"粤AFQ1171","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127R0769991","p":"粤AGN0059","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B126R0767231","p":"粤AFW1393","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B125R0767172","p":"粤AGN3800","m":"理想L7","c":"广州","t":"固定资产","j":"2027-01-17","s":"2027-02-02","n":"年检正常","g":"有源设备续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B127R0767075","p":"粤AGR6300","m":"理想L7","c":"广州","t":"固定资产","j":"2027-02-02","s":"2027-02-02","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B126S0401128","p":"云AFG6676","m":"理想L8","c":"郑州","t":"固定资产","j":"2027-02-03","s":"2027-02-03","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B125R0768435","p":"粤AGQ3303","m":"理想L7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE48PB634562","p":"湘ADL1887","m":"宝骏云朵","c":"长沙","t":"固定资产","j":"2026-09-17","s":"2026-09-17","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE47PB632771","p":"湘ADM6700","m":"宝骏云朵","c":"长沙","t":"固定资产","j":"2026-09-17","s":"2026-09-17","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE40PB635379","p":"湘ADU8595","m":"宝骏云朵","c":"长沙","t":"固定资产","j":"2026-09-17","s":"2026-09-17","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L9PG045428","p":"湘A5D9Z9","m":"别克GL8","c":"长沙","t":"固定资产","j":"2026-09-10","s":"2026-09-10","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L4PG045529","p":"湘A2D2E6","m":"别克GL8","c":"长沙","t":"固定资产","j":"2026-09-10","s":"2026-09-10","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L3PG045179","p":"湘A6D9C8","m":"别克GL8","c":"长沙","t":"固定资产","j":"2026-09-10","s":"2026-09-10","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L1PG044984","p":"湘A3C5Z2","m":"别克GL8","c":"长沙","t":"固定资产","j":"2026-09-10","s":"2026-09-10","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSKG4BC17PD068781","p":"湘A3G5C0","m":"大通G50","c":"长沙","t":"固定资产","j":"2027-01-08","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSKG4BC16PD071512","p":"湘A1J2H2","m":"大通G50","c":"长沙","t":"固定资产","j":"2027-01-08","s":"2027-01-09","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSKG4BC12PD071555","p":"湘A6G7D3","m":"大通G50","c":"长沙","t":"固定资产","j":"2027-01-08","s":"2027-01-09","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LDP95C960PE110829","p":"粤BC56616","m":"岚图梦想家","c":"广州","t":"固定资产","j":"2026-10-12","s":"2027-04-17","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LDP95E96XPE113622","p":"湘AFJ3827","m":"岚图梦想家","c":"长沙","t":"固定资产","j":"2026-08-28","s":"2026-08-28","n":"年检临期<90天","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B12XS1403054","p":"湘AFD8116","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-01-20","s":"2027-01-20","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"4","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B125S1704847","p":"湘AF38108","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-01-20","s":"2027-01-20","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B124S1402921","p":"湘AFA6286","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-01-20","s":"2027-01-20","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"HLX33B123S1704491","p":"湘AFD0686","m":"理想L8","c":"长沙","t":"固定资产","j":"2027-01-20","s":"2027-01-20","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0D74C47P0678263","p":"粤AH73870","m":"腾势D9","c":"广州","t":"固定资产","j":"2027-01-16","s":"2026-12-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSSGH9XPA013996","p":"湘ADY3301","m":"小鹏G3i","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSSGH99PA013813","p":"湘AA30207","m":"小鹏G3i","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSSGH99PA013732","p":"湘ADZ9825","m":"小鹏G3i","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSSGH98PA013799","p":"湘ADV9115","m":"小鹏G3i","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSSGH93NA204821","p":"湘AA33035","m":"小鹏G3i","c":"长沙","t":"固定资产","j":"2027-04-14","s":"2027-04-14","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGH98PA027235","p":"粤ABX5751","m":"小鹏P5","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGH98PA027204","p":"粤ABX5083","m":"小鹏P5","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGH98PA027168","p":"粤ABX5392","m":"小鹏P5","c":"广州","t":"固定资产","j":"2027-07-28","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LVTDD24B3SDD96631","p":"贵A7KV39","m":"捷途旅行者","c":"昆明","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C47S0381946","p":"湘AFN3359","m":"驱逐舰05","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C45S0379046","p":"湘AF22501","m":"驱逐舰05","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C41S0384275","p":"粤AH00048","m":"驱逐舰05","c":"郑州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C4XS0392620","p":"川AG95805","m":"驱逐舰05","c":"成都","t":"固定资产","j":"2026-08-04","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C48S0389473","p":"川AGM9329","m":"驱逐舰05","c":"成都","t":"固定资产","j":"2026-08-04","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LC0C76C48S0389456","p":"川AG91053","m":"驱逐舰05","c":"成都","t":"固定资产","j":"2026-08-04","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"3","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4096RS095087","p":"云KDA2323","m":"智己L6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-10","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"6","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4093RS112541","p":"云PD51866","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-10","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4097RS112543","p":"云PD62816","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-10","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"4","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS8PC864597","p":"云AD82697","m":"特斯拉Model Y","c":"昆明","t":"固定资产(待处置)","j":"2026-12-14","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS9PC866312","p":"云AD81591","m":"特斯拉Model Y","c":"昆明","t":"固定资产(待处置)","j":"2026-12-14","s":"无保险","n":"年检正常","g":"无源续费","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4090RS106468","p":"云ADM6266","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-09","s":"2026-12-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4091RS044725","p":"云ADV9058","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4094RS110314","p":"云ADQ7755","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-09","s":"2026-12-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR409XRS056498","p":"云ADV1716","m":"智己LS6","c":"昆明","t":"固定资产(待处置)","j":"2027-04-26","s":"2027-04-26","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4097RS085460","p":"云ADY7371","m":"智己L6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-09","s":"2026-12-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4097RS091565","p":"云ADM8178","m":"智己L6","c":"昆明","t":"固定资产(待处置)","j":"2027-01-09","s":"2026-12-26","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB8PA014651","p":"湘AA28812","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB8PA014665","p":"湘ADS2003","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB8PA014682","p":"湘AA10029","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB8PA014696","p":"湘AA25727","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB9PA013668","p":"湘ADS1600","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB9PA014660","p":"湘AA10073","m":"小鹏P7","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（原厂+有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L2PG022671","p":"湘A2A9V6","m":"别克GL8","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4091PS129352","p":"湘ADB9205","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"2027-04-26","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4091RS108505","p":"湘ADC5096","m":"智己LS6","c":"长沙","t":"固定资产","j":"2027-01-06","s":"2027-01-06","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4092RS107136","p":"湘AAN8888","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4093RS108506","p":"湘ADQ9852","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"3","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4096RS107138","p":"湘ADS1667","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4098RS108503","p":"湘AAN8288","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4090RS092931","p":"湘ADR0718","m":"智己L6","c":"长沙","t":"固定资产(待处置)","j":"2026-12-29","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4092RS085236","p":"湘AAN0557","m":"智己L6","c":"长沙","t":"固定资产(待处置)","j":"2026-12-29","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"4","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4097RS063295","p":"湘ADC7506","m":"智己L6","c":"长沙","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检临期<90天","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4098RS092336","p":"湘AAM6166","m":"智己L6","c":"长沙","t":"固定资产(待处置)","j":"2026-12-29","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4099RS085590","p":"湘AD32088","m":"智己L6","c":"长沙","t":"固定资产","j":"2026-12-29","s":"2026-12-29","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"3","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB5PA016325","p":"粤ABX0866","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB5PA019015","p":"粤ABX6257","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB6PA014678","p":"粤ABX6071","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"L1NSPGHB6PA018326","p":"粤ABX2025","m":"小鹏P7","c":"广州","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（原厂+有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE20PB869424","p":"粤ACC2952","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE22PB872938","p":"粤ABJ9245","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB859244","p":"粤ACD3561","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB861060","p":"粤ACD9652","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB871586","p":"粤ACB3586","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB872897","p":"粤ACA6125","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB872933","p":"粤ADN6698","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE23PB872964","p":"粤ACD1802","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE24PB872925","p":"粤ACC1961","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE25PB859245","p":"粤ACB9160","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE25PB861058","p":"粤ACD5261","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE26PB872912","p":"粤ACB8526","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE27PB862034","p":"粤ACA2501","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE27PB869422","p":"粤ACA5920","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE27PB872885","p":"粤ACA9861","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LK6ADAE28PB861054","p":"粤ADL5539","m":"五菱缤果","c":"广州","t":"固定资产","j":"2027-01-06","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4091RS108293","p":"粤ADQ4808","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"2027-01-08","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4094RS108501","p":"粤ABB3498","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4095PS129323","p":"粤AB47065","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-04-26","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4096RS108497","p":"粤AA94600","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4096RS108502","p":"粤ACZ2908","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"2027-01-08","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4097PS128741","p":"粤AA38742","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-04-26","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4097RS108508","p":"粤AD55588","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4098PS128733","p":"粤ABX4653","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4098RS107139","p":"粤AE11380","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4098RS108498","p":"粤AE18879","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"2027-01-08","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4099RS056489","p":"粤AAK9643","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-04-26","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4099RS108297","p":"粤AAN3648","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR409XRS108504","p":"粤AB94939","m":"智己LS6","c":"广州","t":"固定资产(待处置)","j":"2027-01-07","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4090RS064966","p":"粤ADU4715","m":"智己L6","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4092RS065455","p":"粤ADX9647","m":"智己L6","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4094RS065389","p":"粤AB09461","m":"智己L6","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4099RS064416","p":"粤AAJ9461","m":"智己L6","c":"广州","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"无源续费","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4091RS089987","p":"川AC06551","m":"智己L6","c":"成都","t":"固定资产(待处置)","j":"2026-12-26","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4092RS093157","p":"川ABN9228","m":"智己L6","c":"成都","t":"固定资产(待处置)","j":"2027-01-09","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4093RS093166","p":"川AC18667","m":"智己L6","c":"成都","t":"固定资产(待处置)","j":"2027-01-09","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT4094RS088705","p":"川AAB8960","m":"智己L6","c":"成都","t":"固定资产(待处置)","j":"2026-12-26","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWT409XRS088708","p":"川AA76187","m":"智己L6","c":"成都","t":"固定资产(待处置)","j":"2026-12-26","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSJWR4094RS107736","p":"湘AD09591","m":"智己LS6","c":"长沙","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LDP95E965PE113737","p":"粤AGN6232","m":"岚图梦想家","c":"广州","t":"固定资产(待处置)","j":"2026-09-03","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSGUA84L6PG022284","p":"渝BN803C","m":"别克GL8","c":"成都","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LSVYP6B21PN032532","p":"渝AD317J","m":"大众途岳","c":"武汉","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"正常","gi":"双覆盖（有源+无源）","w":"1","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LHGRT9822P2049486","p":"川GLP912","m":"本田皓影","c":"武汉","t":"固定资产(待处置)","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LFV1A2157R6034639","p":"川G2A9R2","m":"","c":"成都","t":"固定资产(待处置)","j":"2026-09-14","s":"2026-09-15","n":"年检临期<90天","g":"正常","gi":"双覆盖（有源+无源）","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS0PC898503","p":"湘AA22860","m":"特斯拉Model Y","c":"长沙","t":"固定资产","j":"无保险","s":"无保险","n":"年检正常","g":"更换无源设备","gi":"仅无源","w":"无违章","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0},{"v":"LRWYGCFS6PC864534","p":"湘ADJ0657","m":"特斯拉Model Y","c":"长沙","t":"固定资产(待处置)","j":"2027-04-10","s":"无保险","n":"年检正常","g":"正常","gi":"仅无源","w":"2","ca":"就地交接","ba":"第一批-确认可接","l":0,"f":0}];
+
+const BASELINE = {
+  reportDate: '2026-08-03', total: 204,
+  cities: { '广州':92,'长沙':50,'昆明':19,'成都':16,'郑州':11,'武汉':11,'三亚':3,'佛山':2 },
+  jqxTotal: 204, syxTotal: 204
+};
+
+const INS_OVERLAP = VEHICLES_RAW.filter(v => v.j !== '无保险' && v.s !== '无保险').length;
+
+let state = {
+  reportDate: BASELINE.reportDate,
+  jqxDone: VEHICLES_RAW.filter(v => v.j !== '无保险').length,
+  syxDone: VEHICLES_RAW.filter(v => v.s !== '无保险').length,
+  overlapDone: INS_OVERLAP,
+  cities: {}
+};
+// l=车辆上架, f=已交付. 可交付=自动计算(交商双覆盖+无源GPS已安装)
+const INITIAL_CITIES = {
+  '广州':{l:29,f:29},  '长沙':{l:22,f:32},  '昆明':{l:5,f:14},  '成都':{l:1,f:1},  '郑州':{l:4,f:5},  '武汉':{l:2,f:4},  '三亚':{l:0,f:0},  '佛山':{l:0,f:0}
+};
+for (let c in BASELINE.cities) state.cities[c] = { l: 0, f: 0 };
+
+// 从 localStorage 恢复上次保存的进度
+function saveProgress() {
+  const data = {
+    date: state.reportDate,
+    jqx: state.jqxDone,
+    syx: state.syxDone,
+    cities: {},
+    vins: [...DELIVERABLE_VINS]
+  };
+  for (let c in state.cities) data.cities[c] = { l: state.cities[c].l, f: state.cities[c].f };
+  localStorage.setItem('xishi_progress', JSON.stringify(data));
+}
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem('xishi_progress');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.date) state.reportDate = data.date;
+      if (typeof data.jqx === 'number') state.jqxDone = data.jqx;
+      if (typeof data.syx === 'number') state.syxDone = data.syx;
+      if (data.vins && data.vins.length) {
+        DELIVERABLE_VINS.clear(); data.vins.forEach(v=>DELIVERABLE_VINS.add(v));
+      }
+      if (data.cities) {
+        for (let c in data.cities) {
+          if (state.cities[c]) {
+            if (typeof data.cities[c].l === 'number') state.cities[c].l = data.cities[c].l;
+            if (typeof data.cities[c].f === 'number') state.cities[c].f = data.cities[c].f;
+          }
+        }
+      }
+      return; // 有缓存就用缓存
+    }
+  } catch(e) {}
+  // 没有缓存 → 使用底表初始数据
+  for (let c in INITIAL_CITIES) {
+    if (state.cities[c]) {
+      state.cities[c].l = INITIAL_CITIES[c].l;
+      state.cities[c].f = INITIAL_CITIES[c].f;
+    }
+  }
+}
+
+const DELIVERABLE_VINS = new Set(["LFV1A2154R6044092", "LFV1A2155R6037734", "LUZBGAFB1NA071066", "LSGUA84L2PG045528", "LGXC74C49P0578920", "LGXC74C40P0731104", "LGXC74C43P0724812", "HLX33B129P1140580", "HLX33B120P1169076", "HLX33B121P1168194", "HLX33B122P1172416", "HLX33B122P1773504", "HLX33B122P1774314", "HLX33B123P1774287", "HLX33B124P1169470", "HLX33B127P1168992", "HLX33B127P1172122", "HLX33B128P1168144", "HLX33B128P1169441", "HLX33B129P1170128", "HLX33B12XP1169814", "LRWYGCFS0PC168462", "LRWYGCFS9PC168296", "LRWYGCFS2PC046587", "LRWYGCFSXPC046157", "LRWYGCFS0PC046197", "LRWYGCFS2PC961746", "LRWYGCFS3PC046260", "LRWYGCFS3PC046565", "LRWYGCFS4PC046316", "LRWYGCFS4PC046347", "LRWYGCFS7PC046360", "LRWYGCFS7PC046696", "LRWYGCFS9PC046084", "HLX33B127R0768677", "HLX33B122R0768375", "HLX33B122R0767050", "HLX33B121R0767797", "HLX33B129R0770429", "HLX33B128R0771264", "HLX33B128R0771006", "HLX33B127R0768260", "HLX33B126R0770128", "HLX33B125R0767348", "HLX33B120R0767371", "HLX33B126R0767066", "HLX33B121R0767055", "HLX33B123R0770166", "HLX33B121R0767119", "HLX33B127R0769991", "HLX33B126R0767231", "HLX33B125R0767172", "HLX33B127R0767075", "HLX33B126S0401128", "LK6ADAE48PB634562", "LK6ADAE47PB632771", "LK6ADAE40PB635379", "LSGUA84L9PG045428", "LSGUA84L4PG045529", "LSGUA84L3PG045179", "LSGUA84L1PG044984", "LSKG4BC17PD068781", "LSKG4BC16PD071512", "LSKG4BC12PD071555", "LDP95C960PE110829", "LDP95E96XPE113622", "HLX33B12XS1403054", "HLX33B125S1704847", "HLX33B124S1402921", "HLX33B123S1704491", "LC0D74C47P0678263", "L1NSSGH93NA204821", "LC0C76C4XS0392620", "LC0C76C48S0389473", "LC0C76C48S0389456", "LSJWT4096RS095087", "LSJWR4093RS112541", "LSJWR4097RS112543", "LRWYGCFS8PC864597", "LRWYGCFS9PC866312", "LSJWR4090RS106468", "LSJWR4094RS110314", "LSJWR409XRS056498", "LSJWT4097RS085460", "LSJWT4097RS091565", "LSJWR4091PS129352", "LSJWR4091RS108505", "LSJWR4092RS107136", "LSJWR4093RS108506", "LSJWR4096RS107138", "LSJWR4098RS108503", "LSJWT4090RS092931", "LSJWT4092RS085236", "LSJWT4098RS092336", "LSJWT4099RS085590", "LK6ADAE20PB869424", "LK6ADAE22PB872938", "LK6ADAE23PB859244", "LK6ADAE23PB861060", "LK6ADAE23PB871586", "LK6ADAE23PB872897", "LK6ADAE23PB872933", "LK6ADAE23PB872964", "LK6ADAE24PB872925", "LK6ADAE25PB859245", "LK6ADAE25PB861058", "LK6ADAE26PB872912", "LK6ADAE27PB862034", "LK6ADAE27PB869422", "LK6ADAE27PB872885", "LK6ADAE28PB861054", "LSJWR4091RS108293", "LSJWR4094RS108501", "LSJWR4095PS129323", "LSJWR4096RS108497", "LSJWR4096RS108502", "LSJWR4097PS128741", "LSJWR4097RS108508", "LSJWR4098RS107139", "LSJWR4098RS108498", "LSJWR4099RS056489", "LSJWR4099RS108297", "LSJWR409XRS108504", "LSJWT4091RS089987", "LSJWT4092RS093157", "LSJWT4093RS093166", "LSJWT4094RS088705", "LSJWT409XRS088708", "LDP95E965PE113737", "LFV1A2157R6034639", "LRWYGCFS6PC864534"]);
+
+loadProgress();
+
+let vehicles = VEHICLES_RAW.map(v => ({...v}));
+
+// 判断是否可交付：基于底表"可否交付"列标记
+function isDeliverable(v) {
+  return DELIVERABLE_VINS.has(v.v);
+}
+function getDeliverableByCity(city) {
+  return vehicles.filter(v => v.c === city && isDeliverable(v)).length;
+}
+function getDeliverableTotal() {
+  return vehicles.filter(v => isDeliverable(v)).length;
+}
+
+function getAgg() {
+  let l=0, f=0;
+  for (let c in state.cities) { l+=state.cities[c].l; f+=state.cities[c].f; }
+  const d = getDeliverableTotal();
+  return {l,d,f};
+}
+function pct(a,b) { return b>0 ? Math.round(a/b*100) : 0; }
+
+function init() {
+  document.getElementById('genTime').textContent = new Date().toLocaleString('zh-CN');
+  document.getElementById('reportDate').textContent = state.reportDate;
+  // 恢复备注
+  const saved = localStorage.getItem('xishi_note');
+  if (saved) document.getElementById('notesArea').value = saved;
+  document.getElementById('notesArea').addEventListener('input', function() {
+    localStorage.setItem('xishi_note', this.value);
+  });
+  // 动态生成正确网址的二维码
+  document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(window.location.href);
+  renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
+  populateFilters(); renderTable();
+}
+
+function renderSummary() {
+  const {l,d,f}=getAgg();
+  const oP=pct(state.overlapDone, BASELINE.total);
+  const lP=pct(l, BASELINE.total);
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="summary-card">
+      <div class="sc-icon">🚛</div><div class="sc-body"><div class="sc-value" style="color:var(--blue)">${BASELINE.total}<span style="font-size:13px;font-weight:400"> 台</span></div><div class="sc-label">8城市 · 23车型</div></div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-icon">🛡️</div><div class="sc-body"><div class="sc-value" style="color:var(--blue)">${state.overlapDone}<span style="font-size:13px;font-weight:400">/${BASELINE.total}</span></div><div class="sc-label">交商双覆盖 ${oP}% · 交${state.jqxDone} 商${state.syxDone}</div></div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-icon">📦</div><div class="sc-body"><div class="sc-value" style="color:${f>0?'var(--green)':(d>0?'var(--blue)':'var(--text-secondary)')}">${f}/${d}<span style="font-size:13px;font-weight:400;color:var(--text-secondary)"></span></div><div class="sc-label">已交付/可交付 · ${pct(f,BASELINE.total)}% / ${pct(d,BASELINE.total)}%</div></div>
+    </div>
+    <div class="summary-card">
+      <div class="sc-icon">📋</div><div class="sc-body"><div class="sc-value" style="color:${l>0?'var(--blue)':'var(--text-secondary)'}">${l}<span style="font-size:13px;font-weight:400">/${BASELINE.total}</span></div><div class="sc-label">车辆上架 · ${lP}%</div></div>
+    </div>
+  `;
+}
+
+function renderPipeline() {
+  const {l,d,f}=getAgg();
+  const stages = [
+    {n:1, name:'客户确认', stat:`${BASELINE.total}台`, p:100, cls:'done', c:'var(--green)'},
+    {n:2, name:'车辆投保', stat:`交${state.jqxDone} 商${state.syxDone}`, p:pct(state.jqxDone,BASELINE.jqxTotal), cls:state.jqxDone>=BASELINE.jqxTotal?'done':(state.jqxDone>0?'risk':'pending'), c:state.jqxDone>=BASELINE.jqxTotal?'var(--green)':(state.jqxDone>0?'var(--amber)':'#e5e7eb')},
+    {n:3, name:'可交付车辆数', stat:`${d}/${BASELINE.total}`, p:pct(d,BASELINE.total), cls:d>=BASELINE.total?'done':(d>0?'active':'pending'), c:d>=BASELINE.total?'var(--green)':(d>0?'var(--blue)':'#e5e7eb')},
+    {n:4, name:'交付完成', stat:`${f}/${BASELINE.total}`, p:pct(f,BASELINE.total), cls:f>=BASELINE.total?'done':(f>0?'stage4':'pending'), c:f>=BASELINE.total?'var(--green)':(f>0?'#8b5cf6':'#e5e7eb')},
+    {n:5, name:'车辆上架', stat:`${l}/${BASELINE.total}`, p:pct(l,BASELINE.total), cls:l>=BASELINE.total?'done':(l>0?'stage5':'pending'), c:l>=BASELINE.total?'var(--green)':(l>0?'#f97316':'#e5e7eb')}
+  ];
+  document.getElementById('pipeline').innerHTML = stages.map(s => `
+    <div class="ps-stage ${s.cls}"><div class="ps-num" style="background:${s.p>0?s.c:''};color:${s.p>0?'#fff':''}">${s.n}</div><div class="ps-name">${s.name}</div><div class="ps-stat" style="color:${s.p>0?s.c:'var(--text-secondary)'}">${s.stat}</div><div class="ps-bar"><div class="ps-bar-fill" style="width:${s.p}%;background:${s.p>=100?'var(--green)':s.p>0?s.c:'#e5e7eb'}"></div></div></div>
+  `).join('');
+}
+
+function renderCityContent() {
+  const order=['广州','长沙','昆明','成都','郑州','武汉','三亚','佛山'];
+  const {l:tl,d:td,f:tf}=getAgg();
+  const rows=order.map(city=>{
+    const c=state.cities[city]; if(!c) return '';
+    const t=BASELINE.cities[city], cd=getDeliverableByCity(city);
+    const lP=pct(c.l,t), dP=pct(cd,t), fP=pct(c.f,t);
+    return `<tr><td class="ct-name">${city}</td><td><strong>${t}</strong></td><td>${cd}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td>${c.f}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${fP}%;background:${c.f>=cd?'var(--green)':'var(--amber)'}"></div><div class="ct-seg" style="width:${100-fP}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary)">${fP}%</span></td><td>${c.l}<span style="color:var(--text-secondary);font-size:10px">/${t}</span></td></tr>`;
+  }).join('');
+  document.getElementById('cityContent').innerHTML = `
+    <table class="city-table">
+      <thead><tr><th>车辆所在城市</th><th>总量</th><th>可交付</th><th>已交付</th><th>交付进度</th><th>车辆上架</th></tr></thead>
+      <tbody>${rows}<tr style="background:var(--gray-light);font-weight:600;"><td class="ct-name">合计</td><td><strong>${BASELINE.total}</strong></td><td>${td}</td><td>${tf}</td><td><div class="ct-mini-bar"><div class="ct-seg" style="width:${pct(tf,BASELINE.total)}%;background:${tf>=td?'var(--green)':'var(--amber)'}"></div><div class="ct-seg" style="width:${100-pct(tf,BASELINE.total)}%;background:#e5e7eb"></div></div><span style="font-size:10px;color:var(--text-secondary);margin-left:4px">${pct(tf,BASELINE.total)}%</span></td><td>${tl}</td></tr></tbody>
+    </table>`;
+}
+
+function renderAlertContent() {
+  const jqxM=BASELINE.jqxTotal-state.jqxDone, syxM=BASELINE.syxTotal-state.syxDone;
+  const wzN=vehicles.filter(v=>v.w!=='无违章').length;
+  const gpsReplaceWY=vehicles.filter(v=>v.g.includes('更换无源')).length;
+  const gpsRenewYY=vehicles.filter(v=>v.g.includes('有源续费')).length;
+  const gpsRenewWY=vehicles.filter(v=>v.g.includes('无源续费')).length;
+  const gpsInstallWY=vehicles.filter(v=>v.g.includes('补装')).length;
+  const gpsNormal=vehicles.filter(v=>v.g==='正常').length;
+  const gpsActionTotal=vehicles.filter(v=>v.g!=='正常').length;
+  let gpsParts=[];
+  if(gpsReplaceWY>0) gpsParts.push(`更换无源设备 ${gpsReplaceWY}台`);
+  if(gpsRenewWY>0) gpsParts.push(`无源设备续费 ${gpsRenewWY}台`);
+  if(gpsRenewYY>0) gpsParts.push(`有源设备续费 ${gpsRenewYY}台`);
+  if(gpsInstallWY>0) gpsParts.push(`补装无源设备 ${gpsInstallWY}台`);
+  const gpsDetail=gpsParts.join(' · ');
+
+  document.getElementById('alertContent').innerHTML = `
+    <div class="alert-item" style="border-left-color:#f97316;">
+      <div class="ai-title">⚠️ 保险缺失：交强险${jqxM}台 · 商业险${syxM}台 · 双覆盖${state.overlapDone}台</div>
+      <div class="ai-detail">交强险<strong>${pct(state.jqxDone,BASELINE.jqxTotal)}%</strong>，商业险<strong>${pct(state.syxDone,BASELINE.syxTotal)}%</strong>，双覆盖<strong>${pct(state.overlapDone,BASELINE.total)}%</strong>。无保险不得发车。</div>
+    </div>
+    <div class="alert-item ${gpsActionTotal>30?'critical':'info'}">
+      <div class="ai-title">📡 GPS待处理：${gpsActionTotal}台（正常${gpsNormal}台）</div>
+      <div class="ai-detail">${gpsDetail}。原则：确保至少有无源GPS基础上发车，仅统计需人工处理的设备异常项。</div>
+    </div>
+    <div class="alert-item info">
+      <div class="ai-title">🚔 违章记录：${wzN}台有违章</div>
+      <div class="ai-detail">无违章<strong>${vehicles.filter(v=>v.w==='无违章').length}台</strong>，有违章车辆需清理后方可发车。</div>
+    </div>
+    <div class="alert-item" style="border-left-color:var(--green);">
+      <div class="ai-title">✅ 年检：${vehicles.filter(v=>v.n.indexOf('正常')>=0).length}台正常</div>
+      <div class="ai-detail">临期${vehicles.filter(v=>v.n.indexOf('临期')>=0).length}台，其余年检状态正常。</div>
+    </div>
+  `;
+}
+
+function renderTable() {
+  const cf=document.getElementById('filterCity').value, mf=document.getElementById('filterModel').value;
+  const tf=document.getElementById('filterTag').value, isf=document.getElementById('filterIns').value;
+  const sf=document.getElementById('filterSearch').value.toLowerCase();
+  let filtered=vehicles.filter(v=>{
+    if(cf&&v.c!==cf) return false; if(mf&&v.m!==mf) return false; if(tf&&v.t!==tf) return false;
+    if(isf==='both'&&!(v.j!=='无保险'&&v.s!=='无保险')) return false;
+    if(isf==='jqx_only'&&!(v.j!=='无保险'&&v.s==='无保险')) return false;
+    if(isf==='syx_only'&&!(v.j==='无保险'&&v.s!=='无保险')) return false;
+    if(isf==='none'&&!(v.j==='无保险'&&v.s==='无保险')) return false;
+    if(sf&&!v.v.toLowerCase().includes(sf)&&!v.p.toLowerCase().includes(sf)) return false;
+    return true;
+  });
+  document.getElementById('filteredCount').textContent=`筛选：${filtered.length} 台`;
+  document.getElementById('tableCount').textContent=`（${vehicles.length} 台）`;
+  document.getElementById('tableBody').innerHTML=filtered.map((v,i)=>{
+    const jB=v.j==='无保险'?'badge-red':'badge-green', sB=v.s==='无保险'?'badge-red':'badge-green';
+    const tB=v.t==='固定资产(待处置)'?'badge-amber':'badge-blue', gB=v.g==='正常'?'badge-green':'badge-amber';
+    let ds;
+    if(v.f) ds='<span class="badge badge-green">已交付</span>';
+    else if(isDeliverable(v)) ds='<span class="badge badge-blue">可交付</span>';
+    else if(v.l) ds='<span class="badge" style="background:#ede9fe;color:#5b21b6">已上架</span>';
+    else ds='<span class="badge badge-gray">待处理</span>';
+    return `<tr><td>${i+1}</td><td style="font-family:monospace;font-size:10px">${v.v}</td><td>${v.p}</td><td>${v.m}</td><td>${v.c}</td><td><span class="badge ${tB}">${v.t==='固定资产(待处置)'?'待处置':'固定资产'}</span></td><td><span class="badge ${jB}">${v.j==='无保险'?'缺失':v.j}</span></td><td><span class="badge ${sB}">${v.s==='无保险'?'缺失':v.s}</span></td><td><span class="badge badge-green">${v.n}</span></td><td><span class="badge ${gB}">${v.g}</span></td><td><span class="badge ${v.w==='无违章'?'badge-green':'badge-amber'}">${v.w}</span></td><td>${ds}</td></tr>`;
+  }).join('');
+}
+
+function populateFilters(){
+  const cities=[...new Set(vehicles.map(v=>v.c))].sort(), models=[...new Set(vehicles.map(v=>v.m))].sort();
+  const cs=document.getElementById('filterCity'), ms=document.getElementById('filterModel');
+  cities.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});
+  models.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;ms.appendChild(o);});
+}
+
+let editMode=false;
+function toggleEditMode(){
+  editMode=!editMode;
+  const m=document.getElementById('editModal'), b=document.getElementById('editBtn');
+  if(editMode){
+    document.getElementById('editDate').value=state.reportDate;
+    document.getElementById('editJqx').value=state.jqxDone;
+    document.getElementById('editSyx').value=state.syxDone;
+    const order=['广州','长沙','昆明','成都','郑州','武汉','三亚','佛山'];
+    document.getElementById('editCityGrid').innerHTML=order.map(city=>{
+      const c=state.cities[city], t=BASELINE.cities[city];
+      return `<div class="city-edit-item"><strong>${city}（${t}台）</strong><div class="inline-inputs"><span>上架</span><input type="number" id="el_${city}" value="${c.l}" min="0" max="${t}"><span>已交</span><input type="number" id="ef_${city}" value="${c.f}" min="0" max="${t}"></div></div>`;
+    }).join('');
+    m.classList.add('show'); b.textContent='✖ 关闭';
+  }else{ m.classList.remove('show'); b.textContent='✏️ 更新进度'; }
+}
+
+function applyEdits(){
+  state.reportDate=document.getElementById('editDate').value||state.reportDate;
+  state.jqxDone=parseInt(document.getElementById('editJqx').value)||0;
+  state.syxDone=parseInt(document.getElementById('editSyx').value)||0;
+  state.overlapDone=VEHICLES_RAW.filter(v=>v.j!=='无保险'&&v.s!=='无保险').length;
+  const order=['广州','长沙','昆明','成都','郑州','武汉','三亚','佛山'];
+  order.forEach(city=>{
+    const lE=document.getElementById('el_'+city), fE=document.getElementById('ef_'+city);
+    if(lE) state.cities[city].l=parseInt(lE.value)||0;
+    if(fE) state.cities[city].f=parseInt(fE.value)||0;
+  });
+  document.getElementById('reportDate').textContent=state.reportDate;
+  saveProgress();
+  renderSummary(); renderPipeline(); renderCityContent(); renderAlertContent();
+  toggleEditMode();
+}
+
+function exportSnapshot(){
+  const btn=document.querySelector('.btn-primary');
+  btn.textContent='⏳ 生成中...'; btn.disabled=true;
+  const detail=document.getElementById('detailSection');
+  const titleEl=detail.previousElementSibling;
+  const container=document.querySelector('.container');
+  const twoCol=document.querySelector('.two-col');
+  const rightCol=document.querySelector('.right-col');
+  const alertBox=document.getElementById('alertBox');
+  const notesBox=document.getElementById('notesBox');
+  const cityBox=document.getElementById('cityBox');
+  const alertContent=document.getElementById('alertContent');
+  const notesArea=document.getElementById('notesArea');
+
+  // Replace textarea with div for proper html2canvas rendering
+  const notesText=notesArea.value;
+  const notesDiv=document.createElement('div');
+  notesDiv.id='notesExportDiv';
+  notesDiv.style.cssText='width:100%;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--card-bg);line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;';
+  notesDiv.textContent=notesText;
+  notesArea.style.display='none';
+  notesArea.parentNode.insertBefore(notesDiv, notesArea);
+
+  const orig = {
+    cW: container.style.width, cMW: container.style.maxWidth,
+    tcD: twoCol.style.display, rCD: rightCol?rightCol.style.display:'',
+    rCF: rightCol?rightCol.style.flex:'', rCFD: rightCol?rightCol.style.flexDirection:'',
+    aOF: alertBox.style.flex, nOF: notesBox.style.flex,
+    acO: alertContent.style.overflow, acOY: alertContent.style.overflowY, acH: alertContent.style.maxHeight
+  };
+
+  container.style.width='750px'; container.style.maxWidth='none';
+  twoCol.style.display='block';
+  if(rightCol){ rightCol.style.display='block'; rightCol.style.flex='none'; rightCol.style.flexDirection='column'; }
+  cityBox.style.marginBottom='10px';
+  alertBox.style.flex='none'; alertBox.style.marginBottom='10px';
+  notesBox.style.flex='none';
+  alertContent.style.overflow='visible'; alertContent.style.overflowY='visible'; alertContent.style.maxHeight='none';
+  detail.style.display='none';
+  if(titleEl) titleEl.style.display='none';
+
+  html2canvas(container, { scale: 2, backgroundColor: '#f5f6f8', useCORS: true, width:750 }).then(canvas => {
+    container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
+    twoCol.style.display=orig.tcD;
+    if(rightCol){ rightCol.style.display=orig.rCD; rightCol.style.flex=orig.rCF; rightCol.style.flexDirection=orig.rCFD; }
+    cityBox.style.marginBottom='';
+    alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
+    notesBox.style.flex=orig.nOF;
+    alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
+    notesDiv.remove(); notesArea.style.display='';
+    detail.style.display=''; if(titleEl) titleEl.style.display='';
+    btn.textContent='📥 导出'; btn.disabled=false;
+    const link=document.createElement('a');
+    link.download=`西十日报快照_${state.reportDate}.jpg`;
+    link.href=canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  }).catch(() => {
+    container.style.width=orig.cW; container.style.maxWidth=orig.cMW;
+    twoCol.style.display=orig.tcD;
+    if(rightCol){ rightCol.style.display=orig.rCD; rightCol.style.flex=orig.rCF; rightCol.style.flexDirection=orig.rCFD; }
+    cityBox.style.marginBottom='';
+    alertBox.style.flex=orig.aOF; alertBox.style.marginBottom='';
+    notesBox.style.flex=orig.nOF;
+    alertContent.style.overflow=orig.acO; alertContent.style.overflowY=orig.acOY; alertContent.style.maxHeight=orig.acH;
+    notesDiv.remove(); notesArea.style.display='';
+    detail.style.display=''; if(titleEl) titleEl.style.display='';
+    btn.textContent='📥 导出'; btn.disabled=false;
+    alert('导出失败，请重试');
+  });
+}
+
+init();
+</script>
+</body>
+</html>
