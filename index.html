@@ -314,28 +314,7 @@ function saveProgress() {
   localStorage.setItem('xishi_progress', JSON.stringify(data));
 }
 function loadProgress() {
-  try {
-    const raw = localStorage.getItem('xishi_progress');
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (data.date) state.reportDate = data.date;
-      if (typeof data.jqx === 'number') state.jqxDone = data.jqx;
-      if (typeof data.syx === 'number') state.syxDone = data.syx;
-      if (data.vins && data.vins.length) {
-        DELIVERABLE_VINS.clear(); data.vins.forEach(v=>DELIVERABLE_VINS.add(v));
-      }
-      if (data.cities) {
-        for (let c in data.cities) {
-          if (state.cities[c]) {
-            if (typeof data.cities[c].l === 'number') state.cities[c].l = data.cities[c].l;
-            if (typeof data.cities[c].f === 'number') state.cities[c].f = data.cities[c].f;
-          }
-        }
-      }
-      return; // 有缓存就用缓存
-    }
-  } catch(e) {}
-  // 没有缓存 → 使用底表初始数据
+  // 始终读取模板默认数据，所有人打开都一样
   for (let c in INITIAL_CITIES) {
     if (state.cities[c]) {
       state.cities[c].l = INITIAL_CITIES[c].l;
